@@ -21,6 +21,7 @@ import io
 from time import sleep
 from zipfile import ZipFile
 import zipfile
+import math
 from tqdm import tqdm
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
@@ -61,12 +62,12 @@ def main():
     # are performed in chunks. Set the desired chunk size (in bytes), in the
     # variable below.  
     # Note: There are some restrictions with chunk sizes. For files larger than 256KB,
-    # use chunk_size values that are multiples of 256KB (1024 * 256 * some_value).
+    # use CHUNK_SIZE values that are multiples of 256KB (1024 * 256 * some_value).
     # For files smaller than 256KB, there are no restrictions.
     #  
     # For the best efficiency, try to keep the chunksize as close to the default
     # value as possible.
-    chunk_size = 104857600  # Equals to 100MB. Default Google Drive chunksize value. 
+    CHUNK_SIZE = 104857600  # Equals to 100MB. Default Google Drive chunksize value. 
     options = ["d", "c", "s", "e"]
 
     while True:
@@ -85,9 +86,7 @@ def main():
             print("=================================================================================================")
             continue
 
-        
         if option == "d":
-            
             try:
                 results = drive.files().list(fields="files(id, name, size)", q="name contains 'VSCode_projects.zip' and trashed=false").execute()
                 try:
@@ -102,7 +101,7 @@ def main():
 
                 request = drive.files().get_media(fileId=file_id)
                 with io.FileIO("C:/Users/Gustavo/VSCode_projects.zip", "w") as file:
-                    downloader = MediaIoBaseDownload(file, request, chunksize=chunk_size)
+                    downloader = MediaIoBaseDownload(file, request, chunksize=CHUNK_SIZE)
                     done = False
                     # Loads the progress bar
                     with tqdm(
@@ -136,50 +135,72 @@ def main():
                 print(f"An error occurred: {error}")
                  
         if option == "c":
-
-            file_dir = input("Type the path of the file you want to upload."
+            # Copying file paths from Windows sometimes adds a invisible
+            # character "u+202a". Strip() removes it from the beggining of the
+            # file_dir string path.
+            file_dir = Path(input("Type the absolute path of the file you want to upload."
                         "\nNOTE: If the file is a directory (folder), it will be zipped to a .zip file.\n"
-                        "=> ")
+                        "=> ").strip("\u202a")) 
+
+            if Path(file_dir).exists():
+                if Path(file_dir).is_dir():
+                    # Function returns the .zip file name, path and metadata.
+                    target_path, local_filename, file_metadata = compact_directory(file_dir)
+                    file_dir = target_path
+                    file = MediaFileUpload(file_dir, mimetype="application/zip", resumable=True) 
+                else:
+                    local_filename = Path(file_dir).name
+                    file = MediaFileUpload(file_dir, resumable=True) 
+                    # TODO: tentar conseguir uma forma de puxar o mimetype de
+                    # arquivos automaticamente
+                    file_metadata = {"name" : local_filename}
+            else:
+                print("ERROR: File path doesn't exist.")
+                continue
+            
+            file_size = Path(file_dir).stat().st_size 
+            print(f"\nArquivo: {local_filename}")
+            print(f"Tamanho: {convert_filesize(file_size)}\n")
 
             try:
-                directory = Path(r"C:/Users/Gustavo/VSCode_projects")
-                target_path = Path(r"C:/Users/Gustavo/VSCode_projects.zip")
-                local_filename = Path(target_path).name
-
-                file_quantity = 0
-                for i in directory.rglob("*"):
-                    file_quantity += 1         
-                
-                with ZipFile(target_path, "w", zipfile.ZIP_DEFLATED) as zfile:
-                    for files in tqdm(directory.rglob("*"), total=file_quantity, desc="Compactando ", ncols=90):
-                        zfile.write(files, files.relative_to(directory)) 
-
-                file_metadata = {
-                    "name" : local_filename,
-                    "mimetype" : "application/zip"
-                }
-                file = MediaFileUpload(target_path, mimetype="application/zip",resumable=True)
-
+                # TODO: usar nextpage e nextpagetoken para aumentar o numero de
+                # resultados na pasta root do GDrive
                 results = drive.files().list(fields="files(id, name)", 
                     q=f"name contains '{local_filename}' and trashed=false").execute()
-        
+ 
                 try:
                     items = results.get("files", [])
                     file_id = items[0]["id"]
-                    drive_filename = items[0]["name"] 
+                    drive_filename = items[0]["name"]
+                    #‪C:\Users\Gustavo\VSCode_projects.zip 
 
                     if len(items) > 0 and drive_filename == local_filename:
-                        print("\n=> O arquivo já existe no Drive. Atualizando arquivo...")
-                        sleep(1.5)
-                        request = drive.files().update(fileId=file_id, body=file_metadata, media_body=file)  
+                        upload_choice = input("AVISO: O arquivo já existe no Google Drive!"
+                                            "Pressione Y para atualizar o arquivo, C para manter os dois arquivos"
+                                            "ou N para abortar ação: (Y/C/N)").upper()
+
+                        if upload_choice not in ["Y", "C", "N"]:
+                            print("Selecione uma opção válida.")
+                        elif upload_choice == "Y":
+                            request = drive.files().update(fileId=file_id, body=file_metadata, media_body=file)  
+                        elif upload_choice == "C":
+                            #TODO: Sistema para renomear arquivos em _copy1, _copy2...
+                            #quando a opção é manter.
+                            filename_woext = Path(drive_filename).stem
+                            filename_extension = Path(drive_filename).suffix
+
+
+                            file_metadata["name"] = f"{drive_filename}(1)"
+                            request = drive.files().create(body=file_metadata, media_body=file)
+                        else:
+                            continue
                 
                 except IndexError:
                     print("\n=> O arquivo não existe no Drive. Criando novo arquivo...")
                     sleep(1.5)
                     request = drive.files().create(body=file_metadata, media_body=file)
 
-
-                file_size = Path(target_path).stat().st_size  
+                 
                                                 
                 # Loads the upload progress bar.
                 with tqdm(total=file_size, unit="B", desc="Fazendo Upload ", ncols=90, unit_scale=True, unit_divisor=1024, miniters=1,
@@ -218,6 +239,41 @@ def main():
         print("=================================================================================================")
 
     drive.close()   
+
+def compact_directory(file_dir): 
+    # eng: "File identified as a directory. Starting compaction..."
+    print("\nArquivo identificado como diretório. Iniciando compactação...")
+    sleep(1) 
+    target_path = Path(f"{file_dir}.zip")
+    local_filename = Path(target_path).name
+   
+    file_quantity = 0
+    for file in file_dir.rglob("*"):
+        file_quantity += 1         
+        
+    with ZipFile(target_path, "w", zipfile.ZIP_DEFLATED) as zfile:
+        for files in tqdm(file_dir.rglob("*"), total=file_quantity, desc="Compactando ", ncols=90):
+            zfile.write(files, files.relative_to(file_dir)) 
+
+    file_metadata = {
+                    "name" : local_filename,
+                    "mimetype" : "application/zip"
+                }
+
+    return target_path, local_filename, file_metadata
+
+
+def convert_filesize(size_bytes):
+   if size_bytes == 0:
+       return "0B"
+   size_unit = ("B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB")
+   i = int(math.floor(math.log(size_bytes, 1024))) # i = index of size_unit tuple
+   # unit_bytesize = 1 unit of size, in bytes.
+   # i.e if the unit is in MB, it will store 1MB, in bytes (1048576 bytes)).
+   unit_bytesize = math.pow(1024, i)
+   size_converted = round(size_bytes / unit_bytesize, 2)
+   return f"{size_converted} {size_unit[i]}"
+
 
 if __name__ == "__main__":
     main()
