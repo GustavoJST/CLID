@@ -226,18 +226,9 @@ def main():
                 print(f"An error occurred: {error}") 
                 return
             
-            file.stream().close() 
+            file.stream().close()
             if file_created == True:
-                if Path(file_dir).exists:
-                    # English: Removing the created .zip file form the system...
-                    print("\n=> Removendo arquivo ZIP do sistema...")
-                    sleep(1)
-                    Path(file_dir).unlink()
-                    # English: Local .zip file removed successfully!
-                    print("\n=> Remoção do arquivo local concluido!")
-                else:
-                    # English: ERROR: File {file_dir} doesn't exist in the system. Aborting operation...
-                    print(f"\nERRO: Arquivo {file_dir} não existe no sitema. Cancelando operação...")
+                remove_localfile(file_dir)
                 file_created = False
         
         print("=================================================================================================")
@@ -316,6 +307,17 @@ def upload_file(file_size, request):
     # English: Upload completed successfully!
     print("\n=> Upload concluído com sucesso!")
 
+def remove_localfile(file_dir):
+    if Path(file_dir).exists:
+        # English: Removing the created .zip file form the system...
+        print("\n=> Removendo arquivo ZIP do sistema...")
+        sleep(1)
+        Path(file_dir).unlink()
+        # English: Local .zip file removed successfully!
+        print("\n=> Remoção do arquivo local concluido!")
+    else:
+        # English: ERROR: File {file_dir} doesn't exist in the system. Aborting operation...
+        print(f"\nERRO: Arquivo {file_dir} não existe no sitema. Cancelando operação...")
 
 if __name__ == "__main__":
     main()
