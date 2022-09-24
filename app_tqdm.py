@@ -219,34 +219,7 @@ def main():
                     if upload_choice == "A":
                         continue
             
-                print("=> Iniciando upload... (Aperte Ctrl+C para abortar)")
-                sleep(1)
-                with tqdm(total=file_size, 
-                    unit="B", 
-                    desc="Fazendo upload ", 
-                    ncols=90, 
-                    unit_scale=True, 
-                    unit_divisor=1024, 
-                    miniters=1,
-                    bar_format="{desc}: {percentage:3.1f}%|{bar}| "
-                            "{n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]") as bar:     
-                    response = None
-                    while response is None:
-                        status, response = request.next_chunk()
-                        # If the file is smaller than the chunksize (100MB), it will be
-                        # completely uploaded in a single chunk, skipping the if below.
-                        # Trying to access status.resumable_progress after the
-                        # file has been completely uploaded will raise AttributeError.  
-                        if status:
-                            bar.n = status.resumable_progress # Keeps track of the total size transfered.
-                            bar.refresh()
-
-                    # Updates bar when the file is uploaded in a single chunk.
-                    if status is None:
-                        bar.n = file_size
-                        bar.refresh() 
-                # English: Upload completed successfully!
-                print("\n=> Upload concluído com sucesso!")
+                upload_file(file_size, request)
                 
             except HttpError as error:
                 # TODO(developer) - Handle errors from drive API.
@@ -291,7 +264,6 @@ def compact_directory(file_dir):
         "mimetype" : "application/zip"
                 }
     file_created = True
-
     return target_path, local_filename, file_metadata, file_created
 
 
@@ -312,6 +284,37 @@ def create_gdrive_copy(file_metadata, drive, drive_filename, file):
     file_metadata["name"] = f"Cópia de {drive_filename}"
     request = drive.files().create(body=file_metadata, media_body=file)
     return request
+
+
+def upload_file(file_size, request):
+    print("\n=> Iniciando upload... (Aperte Ctrl+C para abortar)")
+    sleep(1)
+    with tqdm(total=file_size, 
+        unit="B", 
+        desc="Fazendo upload ", 
+        ncols=90, 
+        unit_scale=True, 
+        unit_divisor=1024, 
+        miniters=1,
+        bar_format="{desc}: {percentage:3.1f}%|{bar}| "
+                "{n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]") as bar:     
+        response = None
+        while response is None:
+            status, response = request.next_chunk()
+            # If the file is smaller than the chunksize (100MB), it will be
+            # completely uploaded in a single chunk, skipping the if below.
+            # Trying to access status.resumable_progress after the
+            # file has been completely uploaded will raise AttributeError.  
+            if status:
+                bar.n = status.resumable_progress # Keeps track of the total size transfered.
+                bar.refresh()
+
+        # Updates bar when the file is uploaded in a single chunk.
+        if status is None:
+            bar.n = file_size
+            bar.refresh() 
+    # English: Upload completed successfully!
+    print("\n=> Upload concluído com sucesso!")
 
 
 if __name__ == "__main__":
