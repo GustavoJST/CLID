@@ -9,7 +9,6 @@
     * Caso arquivo baixado seja um .zip ou (outro compactado, ver possibilidade) Oferecer opção para descompactar
     * Arquivos baixados/descompactados serão colocados na pasta downloads (ver se da pra achar pasta download do pc independente do sistema),
         caso contrario, fazer uma pasta chamada downloads dentro do root do CLID.
-    * Para fazer upload de arquivos, usar prompt p/ usuário pedindo qual o path do arquivo que ele quer upar.
     * Se o arquivo for um diretório (pasta), perguntar se ele quer upar de forma zipada ou como pasta (ver possibilidade de como upar como pasta).
     * Se o arquivo for um arquivo normal (não é pasta), upar normalmente.
  """
@@ -18,6 +17,7 @@ from __future__ import print_function
 
 from pathlib import Path
 import io
+from threading import local
 from time import sleep
 from zipfile import ZipFile
 import zipfile
@@ -29,8 +29,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaFileUpload
-from googleapiclient.http import MediaUpload
-from googleapiclient.http import MediaUploadProgress
+
 
 from googleapiclient.http import MediaIoBaseDownload
 
@@ -68,7 +67,8 @@ def main():
     # For the best efficiency, try to keep the chunksize as close to the default
     # value as possible.
     CHUNK_SIZE = 104857600  # Equals to 100MB. Default Google Drive chunksize value. 
-    options = ["d", "c", "s", "e"]
+    OPTIONS = ["d", "c", "s", "e"]
+    file_created = False
 
     while True:
         print ("\n" "\"d\" = download, extrair e substituir a pasta atual \n" 
@@ -76,12 +76,12 @@ def main():
                     "\"s\" = verificar se o arquivo já existe e sua versão \n"
                     "\"e\" = sair do programa \n")
                 
-        option = input("Digite uma opção:  ").lower()
+        option = input("Digite uma opção: ").lower().strip()
         if option == "e":
             break 
         
         print("=================================================================================================")
-        if option not in options:
+        if option not in OPTIONS:
             print("=> Select a valid option from the menu below.")
             print("=================================================================================================")
             continue
@@ -112,8 +112,9 @@ def main():
                         unit_scale=True,
                         unit_divisor=1024,
                         miniters=1,
-                        bar_format="{desc}: {percentage:3.1f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]") as bar: 
-                        while done is False:
+                        bar_format="{desc}: {percentage:3.1f}%|{bar}| " 
+                            "{n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]") as bar: 
+                        while done == False:
                             status, done = downloader.next_chunk()
                             print(status)
                             print(done)
@@ -130,24 +131,31 @@ def main():
                     for files in tqdm(zfile.infolist(), desc="Extraindo ", ncols=90):
                         zfile.extract(files,"C:/Users/Gustavo/VSCode_projects")
                 print("\n=> Extração e substituição da pasta concluídos com sucesso!")
-                               
+
+            # TODO: how to handle htppError?                   
             except HttpError as error:
                 print(f"An error occurred: {error}")
+                return
                  
         if option == "c":
             # Copying file paths from Windows sometimes adds a invisible
-            # character "u+202a". Strip() removes it from the beggining of the
+            # character "u+202a". Strip("\u202a") removes it from the beggining of the
             # file_dir string path.
-            file_dir = Path(input("Type the absolute path of the file you want to upload."
-                        "\nNOTE: If the file is a directory (folder), it will be zipped to a .zip file.\n"
-                        "=> ").strip("\u202a")) 
+            #
+            # English: Type the absolute path of the file you want to upload.
+            # NOTE: If the file is a directory (folder), it will be zipped before uploading.
+            file_dir = Path(input("Digite o caminho absoluto do arquivo a ser upado."
+                        "\nAVISO: Se o arquivo for um diretório (pasta), ele será upado em formato .zip\n"
+                        "=> ").strip("\u202a").strip()) 
 
             if Path(file_dir).exists():
                 if Path(file_dir).is_dir():
-                    # Function returns the .zip file name, path and metadata.
-                    target_path, local_filename, file_metadata = compact_directory(file_dir)
+                    # Function returns the .zip file name, path, metadata and a
+                    # bool informing the .zip file creation.
+                    target_path, local_filename, file_metadata, file_created = compact_directory(file_dir)
                     file_dir = target_path
-                    file = MediaFileUpload(file_dir, mimetype="application/zip", resumable=True) 
+                    file = MediaFileUpload(file_dir, mimetype="application/zip", resumable=True)
+                     
                 else:
                     local_filename = Path(file_dir).name
                     file = MediaFileUpload(file_dir, resumable=True) 
@@ -155,56 +163,73 @@ def main():
                     # arquivos automaticamente
                     file_metadata = {"name" : local_filename}
             else:
-                print("ERROR: File path doesn't exist.")
+                # English: ERROR: File path doesn't exist.
+                print("\nERRO: O caminho do arquivo não existe.")
+                print("=================================================================================================")
                 continue
             
             file_size = Path(file_dir).stat().st_size 
-            print(f"\nArquivo: {local_filename}")
-            print(f"Tamanho: {convert_filesize(file_size)}\n")
+            print("\n-----------------------------------------------------------------------------------------------")
+            print(f"// Arquivo: {local_filename}")
+            print(f"// Tamanho: {convert_filesize(file_size)}")
+            print("-----------------------------------------------------------------------------------------------\n")
+            sleep(1)
 
             try:
-                # TODO: usar nextpage e nextpagetoken para aumentar o numero de
-                # resultados na pasta root do GDrive
-                results = drive.files().list(fields="files(id, name)", 
-                    q=f"name contains '{local_filename}' and trashed=false").execute()
- 
+                results = drive.files().list(fields="nextPageToken, files(id, name)",
+                    pageSize=1000, 
+                    q=f"name = '{local_filename}' and trashed=false").execute()
+
                 try:
                     items = results.get("files", [])
-                    file_id = items[0]["id"]
-                    drive_filename = items[0]["name"]
-                    #‪C:\Users\Gustavo\VSCode_projects.zip 
-
-                    if len(items) > 0 and drive_filename == local_filename:
-                        upload_choice = input("AVISO: O arquivo já existe no Google Drive!"
-                                            "Pressione Y para atualizar o arquivo, C para manter os dois arquivos"
-                                            "ou N para abortar ação: (Y/C/N)").upper()
-
-                        if upload_choice not in ["Y", "C", "N"]:
-                            print("Selecione uma opção válida.")
-                        elif upload_choice == "Y":
-                            request = drive.files().update(fileId=file_id, body=file_metadata, media_body=file)  
-                        elif upload_choice == "C":
-                            #TODO: Sistema para renomear arquivos em _copy1, _copy2...
-                            #quando a opção é manter.
-                            filename_woext = Path(drive_filename).stem
-                            filename_extension = Path(drive_filename).suffix
-
-
-                            file_metadata["name"] = f"{drive_filename}(1)"
-                            request = drive.files().create(body=file_metadata, media_body=file)
-                        else:
-                            continue
-                
-                except IndexError:
-                    print("\n=> O arquivo não existe no Drive. Criando novo arquivo...")
-                    sleep(1.5)
+                    drive_file = next(file for file in items if file["name"] == local_filename)
+                    drive_filename = drive_file["name"]
+                    file_id = drive_file["id"]
+                except StopIteration:
+                    # If the file doesn't already exists in google drive...
                     request = drive.files().create(body=file_metadata, media_body=file)
 
-                 
-                                                
-                # Loads the upload progress bar.
-                with tqdm(total=file_size, unit="B", desc="Fazendo Upload ", ncols=90, unit_scale=True, unit_divisor=1024, miniters=1,
-                    bar_format="{desc}: {percentage:3.1f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]") as bar:     
+                # If there are two or more files with the exact same
+                # name in Drive, it will upload a copy of the file and
+                # skip user prompt.
+                if len(items) > 1 and drive_filename == local_filename:
+                    request = create_gdrive_copy(file_metadata, drive, drive_filename, file)
+                    print(f"AVISO: Múltiplos arquivos com o mesmo nome. O Arquivo será upado como \"{file_metadata['name']}\".\n")
+                    sleep(1)
+
+                # In case there's only one file with the exact same name
+                # as the local file, in google drive.
+                elif len(items) > 0 and drive_filename == local_filename:
+                    upload_choice = None;
+                    while upload_choice not in ["Y", "C", "A"]:
+                        upload_choice = input("AVISO: O arquivo já existe no Google Drive! Pressione:\n"
+                                            "Y = Atualizar o arquivo\n" 
+                                            "C = Manter os dois arquivos (Arquivo terá \"cópia de ...\" junto ao nome)\n"
+                                            "A = Abortar ação\n"
+                                            "=> ").upper().strip()
+
+                        if upload_choice not in ["Y", "C", "A"]:
+                            print("\nERRO: Selecione uma opção válida.\n") 
+                        elif upload_choice == "Y":
+                            request = drive.files().update(fileId=file_id, body=file_metadata, media_body=file)  
+                            break
+                        elif upload_choice == "C":
+                            request = create_gdrive_copy(file_metadata, drive, drive_filename, file)
+                            break
+                    if upload_choice == "A":
+                        continue
+            
+                print("=> Iniciando upload... (Aperte Ctrl+C para abortar)")
+                sleep(1)
+                with tqdm(total=file_size, 
+                    unit="B", 
+                    desc="Fazendo upload ", 
+                    ncols=90, 
+                    unit_scale=True, 
+                    unit_divisor=1024, 
+                    miniters=1,
+                    bar_format="{desc}: {percentage:3.1f}%|{bar}| "
+                            "{n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]") as bar:     
                     response = None
                     while response is None:
                         status, response = request.next_chunk()
@@ -220,29 +245,35 @@ def main():
                     if status is None:
                         bar.n = file_size
                         bar.refresh() 
+                # English: Upload completed successfully!
                 print("\n=> Upload concluído com sucesso!")
                 
-
             except HttpError as error:
                 # TODO(developer) - Handle errors from drive API.
                 print(f"An error occurred: {error}") 
+                return
             
-            file.stream().close()
-            if Path(target_path).exists:
-                print("\n=> Removendo arquivo ZIP do sistema...")
-                sleep(1)
-                Path(target_path).unlink()
-                print("\n=> Remoção do arquivo local concluido!")
-            else:
-                print(f"\n=> ERRO: Arquivo {target_path} não existe no sitema. Cancelando operação...")
+            file.stream().close() 
+            if file_created == True:
+                if Path(file_dir).exists:
+                    # English: Removing the created .zip file form the system...
+                    print("\n=> Removendo arquivo ZIP do sistema...")
+                    sleep(1)
+                    Path(file_dir).unlink()
+                    # English: Local .zip file removed successfully!
+                    print("\n=> Remoção do arquivo local concluido!")
+                else:
+                    # English: ERROR: File {file_dir} doesn't exist in the system. Aborting operation...
+                    print(f"\nERRO: Arquivo {file_dir} não existe no sitema. Cancelando operação...")
+                file_created = False
         
         print("=================================================================================================")
 
     drive.close()   
 
 def compact_directory(file_dir): 
-    # eng: "File identified as a directory. Starting compaction..."
-    print("\nArquivo identificado como diretório. Iniciando compactação...")
+    # English: "File identified as a directory. Starting compaction..."
+    print("\n=> Arquivo identificado como diretório. Iniciando compactação...")
     sleep(1) 
     target_path = Path(f"{file_dir}.zip")
     local_filename = Path(target_path).name
@@ -256,11 +287,12 @@ def compact_directory(file_dir):
             zfile.write(files, files.relative_to(file_dir)) 
 
     file_metadata = {
-                    "name" : local_filename,
-                    "mimetype" : "application/zip"
+        "name" : local_filename,
+        "mimetype" : "application/zip"
                 }
+    file_created = True
 
-    return target_path, local_filename, file_metadata
+    return target_path, local_filename, file_metadata, file_created
 
 
 def convert_filesize(size_bytes):
@@ -268,11 +300,18 @@ def convert_filesize(size_bytes):
        return "0B"
    size_unit = ("B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB")
    i = int(math.floor(math.log(size_bytes, 1024))) # i = index of size_unit tuple
+
    # unit_bytesize = 1 unit of size, in bytes.
    # i.e if the unit is in MB, it will store 1MB, in bytes (1048576 bytes)).
    unit_bytesize = math.pow(1024, i)
    size_converted = round(size_bytes / unit_bytesize, 2)
    return f"{size_converted} {size_unit[i]}"
+
+
+def create_gdrive_copy(file_metadata, drive, drive_filename, file):
+    file_metadata["name"] = f"Cópia de {drive_filename}"
+    request = drive.files().create(body=file_metadata, media_body=file)
+    return request
 
 
 if __name__ == "__main__":
