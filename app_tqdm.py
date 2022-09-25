@@ -9,15 +9,13 @@
     * Caso arquivo baixado seja um .zip ou (outro compactado, ver possibilidade) Oferecer opção para descompactar
     * Arquivos baixados/descompactados serão colocados na pasta downloads (ver se da pra achar pasta download do pc independente do sistema),
         caso contrario, fazer uma pasta chamada downloads dentro do root do CLID.
-    * Se o arquivo for um diretório (pasta), perguntar se ele quer upar de forma zipada ou como pasta (ver possibilidade de como upar como pasta).
-    * Se o arquivo for um arquivo normal (não é pasta), upar normalmente.
+    
  """
 
 from __future__ import print_function
 
 from pathlib import Path
 import io
-from threading import local
 from time import sleep
 from zipfile import ZipFile
 import zipfile
@@ -29,16 +27,15 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaFileUpload
-
-
 from googleapiclient.http import MediaIoBaseDownload
+
 
 # If modifying these scopes, delete the file token.json.
 SCOPES = ["https://www.googleapis.com/auth/drive"]
 
 def main():
     creds = None
-    # The file token.json stores the user"s access and refresh tokens, and is
+    # The file token.json stores the user's access and refresh tokens, and is
     # created automatically when the authorization flow completes for the first time
     if Path("token.json").exists():
         creds = Credentials.from_authorized_user_file("token.json", SCOPES)
@@ -57,16 +54,16 @@ def main():
     # Builds the google drive service instance 
     drive = build("drive", "v3", credentials=creds)
 
-    # Since all downloads/uploads in this program are resumable, these action
+    # Since all downloads/uploads in this program are set to resumable=True, these actions
     # are performed in chunks. Set the desired chunk size (in bytes), in the
     # variable below.  
-    # Note: There are some restrictions with chunk sizes. For files larger than 256KB,
+    # NOTE: There are some restrictions with chunk sizes. For files larger than 256KB,
     # use CHUNK_SIZE values that are multiples of 256KB (1024 * 256 * some_value).
     # For files smaller than 256KB, there are no restrictions.
     #  
-    # For the best efficiency, try to keep the chunksize as close to the default
+    # For the best efficiency, try to keep the chunk size as close to the default
     # value as possible.
-    CHUNK_SIZE = 104857600  # Equals to 100MB. Default Google Drive chunksize value. 
+    CHUNK_SIZE = 104857600  # Equals to 100MB. Default Google Drive chunk size value. 
     OPTIONS = ["d", "c", "s", "e"]
     file_created = False
 
@@ -87,25 +84,51 @@ def main():
             continue
 
         if option == "d":
+            # TODO: fazer dict
+            drive_workspace_mimetypes = {"application/vnd.google-apps.script",
+                                        "application/vnd.google-apps.presentation",
+                                        "application/vnd.google-apps.jam",
+                                        "application/vnd.google-apps.document",
+                                        "application/vnd.google-apps.drawing",
+                                        "application/vnd.google-apps.folder",
+                                        "application/vnd.google-apps.spreadsheet"}
             try:
-                results = drive.files().list(fields="files(id, name, size)", q="name contains 'VSCode_projects.zip' and trashed=false").execute()
-                try:
-                    items = results.get("files", [])
-                    file_id = items[0]["id"]
-                    file_size = int(items[0]["size"])
+                #while True:
+                # English: Type the name of the file you want to download, with it's extension:
+                search_query = input("\nDigite o nome do arquivo que você quer baixar (junto com sua extensão), ou digite:\n"
+                                    "//  list = Listar os arquivos presentes em seu Google Drive\n"
+                                    "//     A = Abortar ação\n \n"
+                                    "AVISO: Apenas arquivos na pasta root (e fora da lixeira) do Google Drive serão exibidos.\n"
+                                    "=> ").strip().lower()
+               
+                if search_query == "list":
+                    search_request = drive.files().list(corpora="user", 
+                                                        fields="files(id, name, size, mimeType)", 
+                                                        q="'root' in parents and trashed=false").execute()
 
-                except IndexError:
-                    print("Error: File not found in Drive.")
-                    print("=================================================================================================")
-                    continue
+                    search_results = search_request.get("files", [])
+                    search_results = list_files(drive)
+                    
+                
+                else:
+                    results = drive.files().list(corpora="user" ,fields="files(id, name, size, mimetype)", q=f"name contains '{search_results}' and trashed=false").execute()
+                    try:
+                        items = results.get("files", [])
+                        file_id = items[0]["id"]
+                        file_size = int(items[0]["size"])
+
+                    except IndexError:
+                        print("Error: File not found in Drive.")
+                        print("=================================================================================================")
+                        continue
+                    
 
                 request = drive.files().get_media(fileId=file_id)
                 with io.FileIO("C:/Users/Gustavo/VSCode_projects.zip", "w") as file:
                     downloader = MediaIoBaseDownload(file, request, chunksize=CHUNK_SIZE)
                     done = False
                     # Loads the progress bar
-                    with tqdm(
-                        total=file_size, 
+                    with tqdm(total=file_size, 
                         unit="B", 
                         desc="Downloading ",
                         ncols=90, 
@@ -151,7 +174,7 @@ def main():
             if Path(file_dir).exists():
                 if Path(file_dir).is_dir():
                     # Function returns the .zip file name, path, metadata and a
-                    # bool informing the .zip file creation.
+                    # bool informing the .zip file creation status.
                     target_path, local_filename, file_metadata, file_created = compact_directory(file_dir)
                     file_dir = target_path
                     file = MediaFileUpload(file_dir, mimetype="application/zip", resumable=True)
@@ -159,8 +182,6 @@ def main():
                 else:
                     local_filename = Path(file_dir).name
                     file = MediaFileUpload(file_dir, resumable=True) 
-                    # TODO: tentar conseguir uma forma de puxar o mimetype de
-                    # arquivos automaticamente
                     file_metadata = {"name" : local_filename}
             else:
                 # English: ERROR: File path doesn't exist.
@@ -203,9 +224,9 @@ def main():
                     upload_choice = None;
                     while upload_choice not in ["Y", "C", "A"]:
                         upload_choice = input("AVISO: O arquivo já existe no Google Drive! Pressione:\n"
-                                            "Y = Atualizar o arquivo\n" 
-                                            "C = Manter os dois arquivos (Arquivo terá \"cópia de ...\" junto ao nome)\n"
-                                            "A = Abortar ação\n"
+                                            "// Y = Atualizar o arquivo\n" 
+                                            "// C = Manter os dois arquivos (Arquivo terá \"cópia de ...\" junto ao nome)\n"
+                                            "// A = Abortar ação\n"
                                             "=> ").upper().strip()
 
                         if upload_choice not in ["Y", "C", "A"]:
@@ -318,6 +339,21 @@ def remove_localfile(file_dir):
     else:
         # English: ERROR: File {file_dir} doesn't exist in the system. Aborting operation...
         print(f"\nERRO: Arquivo {file_dir} não existe no sitema. Cancelando operação...")
+
+
+def list_files(search_results):
+    counter = 1
+    print("\n=> Os seguintes arquivos foram encontrados: ")
+    print("---------------------------------------------------------------------------------------------------------------------------")
+    for drive_file in search_results:
+        try:
+            print(f"#{counter:>4} | {convert_filesize(int(drive_file['size'])):^16} --->   {drive_file['name']}")
+        # If 'size' key is not found, it's a Google Drive folder,
+        # since GD folder doesn't have any size.   
+        except KeyError:
+            print(f"#{counter:>4} | {'(Drive folder)':^16} --->   {drive_file['name']}")
+        counter += 1
+    print("---------------------------------------------------------------------------------------------------------------------------")
 
 if __name__ == "__main__":
     main()
