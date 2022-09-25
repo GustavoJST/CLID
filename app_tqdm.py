@@ -101,26 +101,35 @@ def main():
                                     "AVISO: Apenas arquivos na pasta root (e fora da lixeira) do Google Drive serão exibidos.\n"
                                     "=> ").strip().lower()
                
+
                 if search_query == "list":
                     search_request = drive.files().list(corpora="user", 
                                                         fields="files(id, name, size, mimeType)", 
                                                         q="'root' in parents and trashed=false").execute()
-
                     search_results = search_request.get("files", [])
-                    search_results = list_files(drive)
-                    
-                
-                else:
-                    results = drive.files().list(corpora="user" ,fields="files(id, name, size, mimetype)", q=f"name contains '{search_results}' and trashed=false").execute()
-                    try:
-                        items = results.get("files", [])
-                        file_id = items[0]["id"]
-                        file_size = int(items[0]["size"])
+                    list_files(search_results)
 
-                    except IndexError:
-                        print("Error: File not found in Drive.")
-                        print("=================================================================================================")
-                        continue
+
+                    
+                else:
+                    search_request = drive.files().list(corpora="user", 
+                                                fields="files(id, name, size, mimetype)", 
+                                                q=f"name contains '{search_results}' and trashed=false").execute()
+                    search_results = search_request.get("files", [])
+                    
+                    if search_results > 1:
+                        list_files(search_results)
+
+
+                        try:
+                            items = results.get("files", [])
+                            file_id = items[0]["id"]
+                            file_size = int(items[0]["size"])
+
+                        except IndexError:
+                            print("Error: File not found in Drive.")
+                            print("=================================================================================================")
+                            continue
                     
 
                 request = drive.files().get_media(fileId=file_id)
@@ -190,11 +199,7 @@ def main():
                 continue
             
             file_size = Path(file_dir).stat().st_size 
-            print("\n-----------------------------------------------------------------------------------------------")
-            print(f"// Arquivo: {local_filename}")
-            print(f"// Tamanho: {convert_filesize(file_size)}")
-            print("-----------------------------------------------------------------------------------------------\n")
-            sleep(1)
+            print_file_stats(local_filename, file_size)
 
             try:
                 results = drive.files().list(fields="nextPageToken, files(id, name)",
@@ -354,6 +359,15 @@ def list_files(search_results):
             print(f"#{counter:>4} | {'(Drive folder)':^16} --->   {drive_file['name']}")
         counter += 1
     print("---------------------------------------------------------------------------------------------------------------------------")
+
+
+def print_file_stats(file_name, file_size):
+    print("\n-----------------------------------------------------------------------------------------------")
+    print(f"// Arquivo: {file_name}")
+    print(f"// Tamanho: {convert_filesize(file_size)}")
+    print("-----------------------------------------------------------------------------------------------\n")
+    sleep(1)
+
 
 if __name__ == "__main__":
     main()
