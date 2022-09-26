@@ -10,6 +10,8 @@
     * Verificar possiblidade de mudar o algoritmo de progresso de compactação.
         Mudar para atualizar a barra conforme os bytes forem lidos,
         e não conforme um arquivo inteiro é comprimido.
+    * usar os.system('cls' if os.name == 'nt' else 'clear') para limpar os
+      terminais e deixar o terminal menos poluido
  """
 
 from __future__ import print_function
@@ -17,6 +19,7 @@ from __future__ import print_function
 
 from pathlib import Path
 import io
+import os
 import math
 import zipfile
 from zipfile import ZipFile
@@ -57,9 +60,9 @@ def main():
     # Builds the google drive service instance 
     drive = build("drive", "v3", credentials=creds)
     
-    file_created = False
 
     while True:
+        file_created = False
         print ("\n" "\"d\" = download, extrair e substituir a pasta atual \n" 
                     "\"c\" = compactar e fazer upload p/ o drive \n"
                     "\"s\" = verificar se o arquivo já existe e sua versão \n"
@@ -71,7 +74,9 @@ def main():
         
         print("=================================================================================================")
         if option not in constants.OPTIONS:
-            print("=> Select a valid option from the menu below.")
+            os.system('cls' if os.name == 'nt' else 'clear')
+            print("=================================================================================================")
+            print("ERROR: Select a valid option from the menu below.")
             print("=================================================================================================")
             continue
 
@@ -103,12 +108,13 @@ def main():
                     if len(search_results) > 1:
                         while True:
                             try:
-                                file_number = int(input("\nSelecione o número do arquivo para download: ").strip())
+                                file_number = int(input("\nSelecione o número do arquivo para download:\n"
+                                                        "=> ").strip())
                                 file_info = search_results[file_number]
                                 print_file_stats(file_info["name"], file_info["size"])
                                 break
                             except (IndexError, ValueError):
-                                print("ERRO: Digite um valor válido!")
+                                print("\nERRO: Digite um valor válido!")
        
 
                     elif len(search_results) == 1:
@@ -187,7 +193,7 @@ def main():
             #
             # English: Type the absolute path of the file you want to upload.
             # NOTE: If the file is a directory (folder), it will be zipped before uploading.
-            file_dir = Path(input("Digite o caminho absoluto do arquivo a ser upado."
+            file_dir = Path(input("Digite o caminho absoluto do arquivo a ser upado:"
                         "\nAVISO: Se o arquivo for um diretório (pasta), ele será upado em formato .zip\n"
                         "=> ").strip("\u202a").strip()) 
 
@@ -204,6 +210,8 @@ def main():
                     file = MediaFileUpload(file_dir, resumable=True) 
                     file_metadata = {"name" : local_filename}
             else:
+                os.system('cls' if os.name == 'nt' else 'clear')
+                print("=================================================================================================")
                 # English: ERROR: File path doesn't exist.
                 print("\nERRO: O caminho do arquivo não existe.")
                 print("=================================================================================================")
@@ -213,7 +221,7 @@ def main():
             print_file_stats(local_filename, file_size)
 
             try:
-                results = drive.files().list(fields="nextPageToken, files(id, name)",
+                results = drive.files().list(fields="files(id, name)",
                     pageSize=1000, 
                     q=f"name = '{local_filename}' and trashed=false").execute()
 
@@ -254,6 +262,7 @@ def main():
                             request = create_gdrive_copy(file_metadata, drive, drive_filename, file)
                             break
                     if upload_choice == "A":
+                        os.system('cls' if os.name == 'nt' else 'clear')
                         continue
             
                 upload_file(file_size, request)
@@ -267,7 +276,8 @@ def main():
             if file_created == True:
                 remove_localfile(file_dir)
                 file_created = False
-        
+
+            print("Operação concluída!")
         print("=================================================================================================")
 
     drive.close()   
@@ -355,7 +365,7 @@ def remove_localfile(file_dir):
         print("\n=> Remoção do arquivo local concluido!")
     else:
         # English: ERROR: File {file_dir} doesn't exist in the system. Aborting operation...
-        print(f"\nERRO: Arquivo {file_dir} não existe no sitema. Cancelando operação...")
+        print(f"\nERRO: Arquivo {file_dir} não existe no sitema. Pulando operação...\n")
 
 
 def list_drive_files(search_results, GOOGLE_WORKSPACE_MIMETYPES):
