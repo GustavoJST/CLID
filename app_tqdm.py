@@ -367,6 +367,8 @@ def list_drive_files(search_results):
     counter = 1
     print("\n=> Os seguintes arquivos foram encontrados: ")
     print("---------------------------------------------------------------------------------------------------------------------------")
+    print(f"{'Num':^4}  | {'Tamanho':^16}    |   Nome do Arquivo")
+    print("---------------------------------------------------------------------------------------------------------------------------")
     for drive_file in search_results:
         try:
             print(f"#{counter:>4} | {convert_filesize(int(drive_file['size'])):^16} --->   {drive_file['name']}")
