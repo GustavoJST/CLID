@@ -84,7 +84,7 @@ def main():
             continue
 
         if option == "d":
-            # TODO: fazer dict
+            # TODO: fazer dict e colocar como const no topo do arquivo
             drive_workspace_mimetypes = {"application/vnd.google-apps.script",
                                         "application/vnd.google-apps.presentation",
                                         "application/vnd.google-apps.jam",
@@ -93,32 +93,49 @@ def main():
                                         "application/vnd.google-apps.folder",
                                         "application/vnd.google-apps.spreadsheet"}
             try:
-                #while True:
-                # English: Type the name of the file you want to download, with it's extension:
-                search_query = input("\nDigite o nome do arquivo que você quer baixar (junto com sua extensão), ou digite:\n"
-                                    "//  list = Listar os arquivos presentes em seu Google Drive\n"
-                                    "//     A = Abortar ação\n \n"
-                                    "AVISO: Apenas arquivos na pasta root (e fora da lixeira) do Google Drive serão exibidos.\n"
-                                    "=> ").strip().lower()
-               
-
-                if search_query == "list":
-                    search_request = drive.files().list(corpora="user", 
-                                                        fields="files(id, name, size, mimeType)", 
-                                                        q="'root' in parents and trashed=false").execute()
-                    search_results = search_request.get("files", [])
-                    list_files(search_results)
-
+                while True:
+                    # English: Type the name of the file you want to download, with it's extension:
+                    search_query = input("\nDigite o nome do arquivo que você quer baixar (junto com sua extensão), ou digite:\n"
+                                        "//  list = Listar os arquivos presentes em seu Google Drive\n"
+                                        "//     A = Abortar ação\n \n"
+                                        "AVISO: Apenas arquivos na pasta root (e fora da lixeira) do Google Drive serão exibidos.\n"
+                                        "=> ").strip().lower()
 
                     
-                else:
-                    search_request = drive.files().list(corpora="user", 
-                                                fields="files(id, name, size, mimetype)", 
-                                                q=f"name contains '{search_results}' and trashed=false").execute()
-                    search_results = search_request.get("files", [])
+
+                    if search_query == "list":
+                        search_request = drive.files().list(corpora="user", 
+                                                            fields="files(id, name, size, mimeType)", 
+                                                            q="'root' in parents and trashed=false").execute()
+                        search_results = search_request.get("files", [])
+
+                        
+                    else:
+                        search_request = drive.files().list(corpora="user", 
+                                                            fields="files(id, name, size, mimetype)", 
+                                                            q=f"name contains '{search_results}' and trashed=false").execute()
+                        search_results = search_request.get("files", [])
+                        
+                    list_drive_files(search_results)
+
+                    if len(search_results) > 1:
+                        while True:
+                            try:
+                                file_number = int(input("\nSelecione o número do arquivo para download: ").strip())
+                                file_info = search_results[file_number]
+                                print_file_stats(file_info["name"], file_info["size"])
+                                break
+                            except (IndexError, ValueError):
+                                print("Digite um valor válido!")
+       
+
+                    elif len(search_results) == 1:
+                        input("\nProesseguir para o download do arquivo encontrado? (Y/N)\n"
+                                "=> ").strip
+                          
                     
-                    if search_results > 1:
-                        list_files(search_results)
+                    else:
+                        print("Nenhum arquivo com o nome especificado foi encontrado.")
 
 
                         try:
@@ -346,7 +363,7 @@ def remove_localfile(file_dir):
         print(f"\nERRO: Arquivo {file_dir} não existe no sitema. Cancelando operação...")
 
 
-def list_files(search_results):
+def list_drive_files(search_results):
     counter = 1
     print("\n=> Os seguintes arquivos foram encontrados: ")
     print("---------------------------------------------------------------------------------------------------------------------------")
@@ -364,7 +381,7 @@ def list_files(search_results):
 def print_file_stats(file_name, file_size):
     print("\n-----------------------------------------------------------------------------------------------")
     print(f"// Arquivo: {file_name}")
-    print(f"// Tamanho: {convert_filesize(file_size)}")
+    print(f"// Tamanho: {convert_filesize(int(file_size))}")
     print("-----------------------------------------------------------------------------------------------\n")
     sleep(1)
 
