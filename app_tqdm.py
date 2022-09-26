@@ -1,7 +1,5 @@
 """  TODO: 
-    * função de busca simples por nome do arquivo, apenas na pasta root do google drive (página inicial)
     * Nome do programa = CLID - The CLI Google Drive ou CLI Drive - Google Drive up/downloader.
-    * Items na lixeira não serão pesquisados
     * Caso a pesquisa resulte em multiplos arquivos com o mesmo nome, avisar o usuário que multiplos arquivos foram encontrados (WARNING:),
         e listar os arquivos com mesmo nome encontrados, seguido de um prompt para escolher qual arquivo baixar, OU listar/não listar os arquivos
         com nomes iguais, seguido de um prompt se o usuário deseja continuar ou abortar (Y/N).
@@ -9,7 +7,9 @@
     * Caso arquivo baixado seja um .zip ou (outro compactado, ver possibilidade) Oferecer opção para descompactar
     * Arquivos baixados/descompactados serão colocados na pasta downloads (ver se da pra achar pasta download do pc independente do sistema),
         caso contrario, fazer uma pasta chamada downloads dentro do root do CLID.
-    
+    * Verificar possiblidade de mudar o algoritmo de progresso de compactação.
+        Mudar para atualizar a barra conforme os bytes forem lidos,
+        e não conforme um arquivo inteiro é comprimido.
  """
 
 from __future__ import print_function
@@ -65,6 +65,25 @@ def main():
     # value as possible.
     CHUNK_SIZE = 104857600  # Equals to 100MB. Default Google Drive chunk size value. 
     OPTIONS = ["d", "c", "s", "e"]
+    GOOGLE_WORKSPACE_MIMETYPES = {"application/vnd.google-apps.script": "Script",
+                                "application/vnd.google-apps.presentation": "Presentation",
+                                "application/vnd.google-apps.jam": "Jamboard",
+                                "application/vnd.google-apps.document": "Docs",
+                                "application/vnd.google-apps.drawing" : "Drawing",
+                                "application/vnd.google-apps.folder" : "Folder",
+                                "application/vnd.google-apps.spreadsheet": "Spreadsheet",
+                                "application/vnd.google-apps.form": "Form",
+                                "application/vnd.google-apps.map": "Map",
+                                "application/vnd.google-apps.site": "Site",
+                                "application/vnd.google-apps.photo": "Photo"}
+                                
+    DRIVE_EXPORT_FORMATS = {"application/vnd.google-apps.script",
+                                        "application/vnd.google-apps.presentation",
+                                        "application/vnd.google-apps.jam",
+                                        "application/vnd.google-apps.document",
+                                        "application/vnd.google-apps.drawing",
+                                        "application/vnd.google-apps.folder",
+                                        "application/vnd.google-apps.spreadsheet"}
     file_created = False
 
     while True:
@@ -84,14 +103,6 @@ def main():
             continue
 
         if option == "d":
-            # TODO: fazer dict e colocar como const no topo do arquivo
-            drive_workspace_mimetypes = {"application/vnd.google-apps.script",
-                                        "application/vnd.google-apps.presentation",
-                                        "application/vnd.google-apps.jam",
-                                        "application/vnd.google-apps.document",
-                                        "application/vnd.google-apps.drawing",
-                                        "application/vnd.google-apps.folder",
-                                        "application/vnd.google-apps.spreadsheet"}
             try:
                 while True:
                     # English: Type the name of the file you want to download, with it's extension:
@@ -100,8 +111,6 @@ def main():
                                         "//     A = Abortar ação\n \n"
                                         "AVISO: Apenas arquivos na pasta root (e fora da lixeira) do Google Drive serão exibidos.\n"
                                         "=> ").strip().lower()
-
-                    
 
                     if search_query == "list":
                         search_request = drive.files().list(corpora="user", 
@@ -126,27 +135,39 @@ def main():
                                 print_file_stats(file_info["name"], file_info["size"])
                                 break
                             except (IndexError, ValueError):
-                                print("Digite um valor válido!")
+                                print("ERRO: Digite um valor válido!")
        
 
                     elif len(search_results) == 1:
-                        input("\nProesseguir para o download do arquivo encontrado? (Y/N)\n"
-                                "=> ").strip
-                          
-                    
+                        choice = input("\nProsseguir para o download do arquivo encontrado? (Y/N)\n"
+                                "=> ").upper().strip()
+                        if choice == "Y":
+                            file_info = search_results[0]
+                            break
+                        if choice == "N":
+                            continue
+                        else:
+                            print("ERRO: Digite apenas Y ou N")
+                            
                     else:
                         print("Nenhum arquivo com o nome especificado foi encontrado.")
 
+                #TODO: fazer aqui a verificação do mimetype do arquivo. Se for
+                #do google workspace, oferecer opção de conversão baseado no
+                #tipo de arquivo.
+                
+                print_file_stats(file_info["name"], file_info["size"])
 
-                        try:
-                            items = results.get("files", [])
-                            file_id = items[0]["id"]
-                            file_size = int(items[0]["size"])
 
-                        except IndexError:
-                            print("Error: File not found in Drive.")
-                            print("=================================================================================================")
-                            continue
+                try:
+                    items = results.get("files", [])
+                    file_id = items[0]["id"]
+                    file_size = int(items[0]["size"])
+
+                except IndexError:
+                    print("Error: File not found in Drive.")
+                    print("=================================================================================================")
+                    continue
                     
 
                 request = drive.files().get_media(fileId=file_id)
@@ -302,16 +323,17 @@ def compact_directory(file_dir):
 
 
 def convert_filesize(size_bytes):
-   if size_bytes == 0:
-       return "0B"
-   size_unit = ("B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB")
-   i = int(math.floor(math.log(size_bytes, 1024))) # i = index of size_unit tuple
+    size_bytes = int(size_bytes)
+    if size_bytes == 0:
+        return "0B"
+    size_unit = ("B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB")
+    i = int(math.floor(math.log(size_bytes, 1024))) # i = index of size_unit tuple
 
-   # unit_bytesize = 1 unit of size, in bytes.
-   # i.e if the unit is in MB, it will store 1MB, in bytes (1048576 bytes)).
-   unit_bytesize = math.pow(1024, i)
-   size_converted = round(size_bytes / unit_bytesize, 2)
-   return f"{size_converted} {size_unit[i]}"
+    # unit_bytesize = 1 unit of size, in bytes.
+    # i.e if the unit is in MB, it will store 1MB, in bytes (1048576 bytes)).
+    unit_bytesize = math.pow(1024, i)
+    size_converted = round(size_bytes / unit_bytesize, 2)
+    return f"{size_converted} {size_unit[i]}"
 
 
 def create_gdrive_copy(file_metadata, drive, drive_filename, file):
@@ -363,19 +385,22 @@ def remove_localfile(file_dir):
         print(f"\nERRO: Arquivo {file_dir} não existe no sitema. Cancelando operação...")
 
 
-def list_drive_files(search_results):
+def list_drive_files(search_results, GOOGLE_WORKSPACE_MIMETYPES):
     counter = 1
     print("\n=> Os seguintes arquivos foram encontrados: ")
     print("---------------------------------------------------------------------------------------------------------------------------")
-    print(f"{'Num':^4}  | {'Tamanho':^16}    |   Nome do Arquivo")
+    print(f"{'Num':^4}  | {'Tipo':^14} | {'Tamanho':^11}    |   Nome do Arquivo")
     print("---------------------------------------------------------------------------------------------------------------------------")
     for drive_file in search_results:
         try:
-            print(f"#{counter:>4} | {convert_filesize(int(drive_file['size'])):^16} --->   {drive_file['name']}")
-        # If 'size' key is not found, it's a Google Drive folder,
-        # since GD folder doesn't have any size.   
+            print(f"#{counter:>4} | {GOOGLE_WORKSPACE_MIMETYPES[drive_file['mimeType']]:^14} | {convert_filesize(drive_file['size']):^11} --->   {drive_file['name']}")
+        # Handles if the file type is a Drive folder (has no declared size),
+        # or file is an ordinary file (not in the GOOGLE_WORKSPACE_MIMETYPES dict)
         except KeyError:
-            print(f"#{counter:>4} | {'(Drive folder)':^16} --->   {drive_file['name']}")
+            if drive_file["mimeType"] == "application/vnd.google-apps.folder":
+                print(f"#{counter:>4} | {'Folder':^14} | {'----':^11} --->   {drive_file['name']}") 
+            else:
+                print(f"#{counter:>4} | {'File':^14} | {convert_filesize(drive_file['size']):^11} --->   {drive_file['name']}")
         counter += 1
     print("---------------------------------------------------------------------------------------------------------------------------")
 
@@ -383,7 +408,7 @@ def list_drive_files(search_results):
 def print_file_stats(file_name, file_size):
     print("\n-----------------------------------------------------------------------------------------------")
     print(f"// Arquivo: {file_name}")
-    print(f"// Tamanho: {convert_filesize(int(file_size))}")
+    print(f"// Tamanho: {convert_filesize(file_size)}")
     print("-----------------------------------------------------------------------------------------------\n")
     sleep(1)
 
