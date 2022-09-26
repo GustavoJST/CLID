@@ -14,13 +14,15 @@
 
 from __future__ import print_function
 
+
 from pathlib import Path
 import io
-from time import sleep
-from zipfile import ZipFile
-import zipfile
 import math
+import zipfile
+from zipfile import ZipFile
+from time import sleep
 from tqdm import tqdm
+from pathlib import Path
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -28,6 +30,7 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaFileUpload
 from googleapiclient.http import MediaIoBaseDownload
+import constants
 
 
 # If modifying these scopes, delete the file token.json.
@@ -53,37 +56,7 @@ def main():
 
     # Builds the google drive service instance 
     drive = build("drive", "v3", credentials=creds)
-
-    # Since all downloads/uploads in this program are set to resumable=True, these actions
-    # are performed in chunks. Set the desired chunk size (in bytes), in the
-    # variable below.  
-    # NOTE: There are some restrictions with chunk sizes. For files larger than 256KB,
-    # use CHUNK_SIZE values that are multiples of 256KB (1024 * 256 * some_value).
-    # For files smaller than 256KB, there are no restrictions.
-    #  
-    # For the best efficiency, try to keep the chunk size as close to the default
-    # value as possible.
-    CHUNK_SIZE = 104857600  # Equals to 100MB. Default Google Drive chunk size value. 
-    OPTIONS = ["d", "c", "s", "e"]
-    GOOGLE_WORKSPACE_MIMETYPES = {"application/vnd.google-apps.script": "Script",
-                                "application/vnd.google-apps.presentation": "Presentation",
-                                "application/vnd.google-apps.jam": "Jamboard",
-                                "application/vnd.google-apps.document": "Docs",
-                                "application/vnd.google-apps.drawing" : "Drawing",
-                                "application/vnd.google-apps.folder" : "Folder",
-                                "application/vnd.google-apps.spreadsheet": "Spreadsheet",
-                                "application/vnd.google-apps.form": "Form",
-                                "application/vnd.google-apps.map": "Map",
-                                "application/vnd.google-apps.site": "Site",
-                                "application/vnd.google-apps.photo": "Photo"}
-                                
-    DRIVE_EXPORT_FORMATS = {"application/vnd.google-apps.script",
-                                        "application/vnd.google-apps.presentation",
-                                        "application/vnd.google-apps.jam",
-                                        "application/vnd.google-apps.document",
-                                        "application/vnd.google-apps.drawing",
-                                        "application/vnd.google-apps.folder",
-                                        "application/vnd.google-apps.spreadsheet"}
+    
     file_created = False
 
     while True:
@@ -97,7 +70,7 @@ def main():
             break 
         
         print("=================================================================================================")
-        if option not in OPTIONS:
+        if option not in constants.OPTIONS:
             print("=> Select a valid option from the menu below.")
             print("=================================================================================================")
             continue
@@ -125,7 +98,7 @@ def main():
                                                             q=f"name contains '{search_results}' and trashed=false").execute()
                         search_results = search_request.get("files", [])
                         
-                    list_drive_files(search_results)
+                    list_drive_files(search_results, constants.GOOGLE_WORKSPACE_MIMETYPES)
 
                     if len(search_results) > 1:
                         while True:
@@ -172,7 +145,7 @@ def main():
 
                 request = drive.files().get_media(fileId=file_id)
                 with io.FileIO("C:/Users/Gustavo/VSCode_projects.zip", "w") as file:
-                    downloader = MediaIoBaseDownload(file, request, chunksize=CHUNK_SIZE)
+                    downloader = MediaIoBaseDownload(file, request, chunksize=constants.CHUNK_SIZE)
                     done = False
                     # Loads the progress bar
                     with tqdm(total=file_size, 
@@ -224,7 +197,7 @@ def main():
                     # bool informing the .zip file creation status.
                     target_path, local_filename, file_metadata, file_created = compact_directory(file_dir)
                     file_dir = target_path
-                    file = MediaFileUpload(file_dir, mimetype="application/zip", resumable=True)
+                    file = MediaFileUpload(file_dir, mimetype="application/zip", resumable=True, chunksize=constants.CHUNK_SIZE)
                      
                 else:
                     local_filename = Path(file_dir).name
