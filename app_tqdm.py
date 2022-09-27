@@ -112,12 +112,15 @@ def main():
                     list_drive_files(search_results, constants.GOOGLE_WORKSPACE_MIMETYPES)
 
                     if len(search_results) > 1:
-                        while True:
+                        while search_completed != True:
                             try:
                                 # TODO: add abort system
                                 file_number = input("\nSelecione o número do arquivo para download, ou..."
                                                         "\n// A = Abortar ação\n"
                                                         "=> ").strip().upper()
+                                if file_number == "A":
+                                    os.system('cls' if os.name == 'nt' else 'clear')
+                                    break
                                 file_info = search_results[int(file_number) - 1]
                                 search_completed = True
                                 break
