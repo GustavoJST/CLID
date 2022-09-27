@@ -23,10 +23,10 @@ GOOGLE_WORKSPACE_MIMETYPES = {"application/vnd.google-apps.script": "Script",
                             "application/vnd.google-apps.photo": "Photo"}
                             
 DRIVE_EXPORT_FORMATS = {"application/vnd.google-apps.script",
-                                    "application/vnd.google-apps.presentation",
-                                    "application/vnd.google-apps.jam",
-                                    "application/vnd.google-apps.document",
-                                    "application/vnd.google-apps.drawing",
-                                    "application/vnd.google-apps.folder",
-                                    "application/vnd.google-apps.spreadsheet"}
+                        "application/vnd.google-apps.presentation",
+                        "application/vnd.google-apps.jam",
+                        "application/vnd.google-apps.document",
+                        "application/vnd.google-apps.drawing",
+                        "application/vnd.google-apps.folder",
+                        "application/vnd.google-apps.spreadsheet"}
 

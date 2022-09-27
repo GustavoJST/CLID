@@ -35,7 +35,6 @@ from googleapiclient.http import MediaFileUpload
 from googleapiclient.http import MediaIoBaseDownload
 import constants
 
-
 # If modifying these scopes, delete the file token.json.
 SCOPES = ["https://www.googleapis.com/auth/drive"]
 
@@ -60,7 +59,6 @@ def main():
     # Builds the google drive service instance 
     drive = build("drive", "v3", credentials=creds)
     
-
     while True:
         file_created = False
         print ("\n" "\"d\" = download, extrair e substituir a pasta atual \n" 
@@ -81,8 +79,10 @@ def main():
             continue
 
         if option == "d":
+            
             try:
                 while True:
+                    search_completed = False
                     # English: Type the name of the file you want to download, with it's extension:
                     search_query = input("\nDigite o nome do arquivo que você quer baixar (junto com sua extensão), ou digite:\n"
                                         "//  list = Listar os arquivos presentes em seu Google Drive\n"
@@ -99,37 +99,47 @@ def main():
                         
                     else:
                         search_request = drive.files().list(corpora="user", 
-                                                            fields="files(id, name, size, mimetype)", 
-                                                            q=f"name contains '{search_results}' and trashed=false").execute()
+                                                            fields="files(id, name, size, mimeType)", 
+                                                            q=f"name contains '{search_query}' and trashed=false").execute()
                         search_results = search_request.get("files", [])
+
+                    if len(search_results) == 0:
+                        os.system('cls' if os.name == 'nt' else 'clear')
+                        print("=>ERRO: Nenhum arquivo com o nome especificado foi encontrado.")
+                        continue
                         
                     list_drive_files(search_results, constants.GOOGLE_WORKSPACE_MIMETYPES)
 
                     if len(search_results) > 1:
                         while True:
                             try:
-                                file_number = int(input("\nSelecione o número do arquivo para download:\n"
+                                file_number = int(input("\nSelecione o número do arquivo para download, ou..."
+                                                        "\n// A = Abortar ação\n"
                                                         "=> ").strip())
                                 file_info = search_results[file_number]
-                                print_file_stats(file_info["name"], file_info["size"])
+                                search_completed = True
                                 break
                             except (IndexError, ValueError):
                                 print("\nERRO: Digite um valor válido!")
-       
+                        
 
                     elif len(search_results) == 1:
-                        choice = input("\nProsseguir para o download do arquivo encontrado? (Y/N)\n"
-                                "=> ").upper().strip()
-                        if choice == "Y":
-                            file_info = search_results[0]
-                            break
+                        choice = None
+                        while search_completed != True:
+                            choice = input("\nProsseguir para o download do arquivo encontrado? (Y/N)\n"
+                                    "=> ").upper().strip()
+                            if choice not in ["Y", "N"]:
+                                print("ERRO: Digite apenas Y ou N")
+                            elif choice == "Y":
+                                file_info = search_results[0]
+                                search_completed = True
+                                break
                         if choice == "N":
+                            os.system('cls' if os.name == 'nt' else 'clear')
                             continue
-                        else:
-                            print("ERRO: Digite apenas Y ou N")
-                            
-                    else:
-                        print("Nenhum arquivo com o nome especificado foi encontrado.")
+
+                    if search_completed == True:
+                        break   
 
                 #TODO: fazer aqui a verificação do mimetype do arquivo. Se for
                 #do google workspace, oferecer opção de conversão baseado no
@@ -139,9 +149,8 @@ def main():
 
 
                 try:
-                    items = results.get("files", [])
-                    file_id = items[0]["id"]
-                    file_size = int(items[0]["size"])
+                    file_id = file_info[0]["id"]
+                    file_size = int(file_info[0]["size"])
 
                 except IndexError:
                     print("Error: File not found in Drive.")
