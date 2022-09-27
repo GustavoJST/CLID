@@ -78,8 +78,7 @@ def main():
             print("=================================================================================================")
             continue
 
-        if option == "d":
-            
+        if option == "d":  
             try:
                 while True:
                     search_completed = False
@@ -88,15 +87,17 @@ def main():
                                         "//  list = Listar os arquivos presentes em seu Google Drive\n"
                                         "//     A = Abortar ação\n \n"
                                         "AVISO: Apenas arquivos na pasta root (e fora da lixeira) do Google Drive serão exibidos.\n"
-                                        "=> ").strip().lower()
+                                        "=> ").strip().upper()
 
-                    if search_query == "list":
+                    if search_query == "LIST":
                         search_request = drive.files().list(corpora="user", 
                                                             fields="files(id, name, size, mimeType)", 
                                                             q="'root' in parents and trashed=false").execute()
                         search_results = search_request.get("files", [])
 
-                        
+                    elif search_query == "A":
+                        break
+
                     else:
                         search_request = drive.files().list(corpora="user", 
                                                             fields="files(id, name, size, mimeType)", 
@@ -113,10 +114,11 @@ def main():
                     if len(search_results) > 1:
                         while True:
                             try:
-                                file_number = int(input("\nSelecione o número do arquivo para download, ou..."
+                                # TODO: add abort system
+                                file_number = input("\nSelecione o número do arquivo para download, ou..."
                                                         "\n// A = Abortar ação\n"
-                                                        "=> ").strip())
-                                file_info = search_results[file_number]
+                                                        "=> ").strip().upper()
+                                file_info = search_results[int(file_number)]
                                 search_completed = True
                                 break
                             except (IndexError, ValueError):
@@ -139,14 +141,28 @@ def main():
                             continue
 
                     if search_completed == True:
-                        break   
+                        break  
+
+                if search_query == "A":
+                    os.system('cls' if os.name == 'nt' else 'clear')
+                    continue
+
 
                 #TODO: fazer aqui a verificação do mimetype do arquivo. Se for
                 #do google workspace, oferecer opção de conversão baseado no
                 #tipo de arquivo.
+
+                if file_info["mimeType"] in constants.DRIVE_EXPORT_FORMATS.keys():
+                    pass
+
+                else:
+                    print(f"ERRO: O arquivo '{file_info['name']}', do tipo" 
+                        f"{constants.GOOGLE_WORKSPACE_MIMETYPES[file_info['mimeType']].strip('*')}, não possui suporte para download."  
+                        "Cancelando Operação...")
+                    sleep(1)
+                    continue
                 
                 print_file_stats(file_info["name"], file_info["size"])
-
 
                 try:
                     file_id = file_info[0]["id"]
@@ -389,13 +405,16 @@ def list_drive_files(search_results, GOOGLE_WORKSPACE_MIMETYPES):
         # Handles if the file type is a Drive folder (has no declared size),
         # or file is an ordinary file (not in the GOOGLE_WORKSPACE_MIMETYPES dict)
         except KeyError:
-            if drive_file["mimeType"] == "application/vnd.google-apps.folder":
-                print(f"#{counter:>4} | {'Folder':^14} | {'----':^11} --->   {drive_file['name']}") 
+            if drive_file["mimeType"] in ["application/vnd.google-apps.folder", 
+                                         "application/vnd.google-apps.map",
+                                         "application/vnd.google-apps.site",
+                                         "application/vnd.google-apps.form"]:
+                print(f"#{counter:>4} | {GOOGLE_WORKSPACE_MIMETYPES[drive_file['mimeType']]:^14} | {'----':^11} --->   {drive_file['name']}") 
             else:
                 print(f"#{counter:>4} | {'File':^14} | {convert_filesize(drive_file['size']):^11} --->   {drive_file['name']}")
         counter += 1
     print("---------------------------------------------------------------------------------------------------------------------------")
-
+    print("AVISO: Arquivos com tipo marcado com '*' não possuem suporte para download.")
 
 def print_file_stats(file_name, file_size):
     print("\n-----------------------------------------------------------------------------------------------")
