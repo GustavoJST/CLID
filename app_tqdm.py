@@ -118,7 +118,7 @@ def main():
                                 file_number = input("\nSelecione o número do arquivo para download, ou..."
                                                         "\n// A = Abortar ação\n"
                                                         "=> ").strip().upper()
-                                file_info = search_results[int(file_number)]
+                                file_info = search_results[int(file_number) - 1]
                                 search_completed = True
                                 break
                             except (IndexError, ValueError):
@@ -414,7 +414,7 @@ def list_drive_files(search_results, GOOGLE_WORKSPACE_MIMETYPES):
                 print(f"#{counter:>4} | {'File':^14} | {convert_filesize(drive_file['size']):^11} --->   {drive_file['name']}")
         counter += 1
     print("---------------------------------------------------------------------------------------------------------------------------")
-    print("AVISO: Arquivos com tipo marcado com '*' não possuem suporte para download.")
+    print("AVISO: Arquivos com o tipo marcado com '*' não possuem suporte para download.")
 
 def print_file_stats(file_name, file_size):
     print("\n-----------------------------------------------------------------------------------------------")
