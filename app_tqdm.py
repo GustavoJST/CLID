@@ -12,6 +12,7 @@
         e não conforme um arquivo inteiro é comprimido.
     * usar os.system('cls' if os.name == 'nt' else 'clear') para limpar os
       terminais e deixar o terminal menos poluido
+    * Usar => apenas para user input e // para multiplas escolhas.
  """
 
 from __future__ import print_function
@@ -106,7 +107,7 @@ def main():
 
                     if len(search_results) == 0:
                         os.system('cls' if os.name == 'nt' else 'clear')
-                        print("=>ERRO: Nenhum arquivo com o nome especificado foi encontrado.")
+                        print("ERRO: Nenhum arquivo com o nome especificado foi encontrado.")
                         continue
                         
                     list_drive_files(search_results, constants.GOOGLE_WORKSPACE_MIMETYPES)
@@ -116,12 +117,14 @@ def main():
                             try:
                                 # TODO: add abort system
                                 file_number = input("\nSelecione o número do arquivo para download, ou..."
-                                                        "\n// A = Abortar ação\n"
+                                                        "\n// A = Abortar ação\n \n"
                                                         "=> ").strip().upper()
                                 if file_number == "A":
                                     os.system('cls' if os.name == 'nt' else 'clear')
                                     break
-                                file_info = search_results[int(file_number) - 1]
+                                # -1 because printed list index starts at 1, while
+                                # search_results list index starts at 0.
+                                file_info = search_results[int(file_number) - 1] 
                                 search_completed = True
                                 break
                             except (IndexError, ValueError):
@@ -156,33 +159,61 @@ def main():
                 #tipo de arquivo.
 
                 if file_info["mimeType"] in constants.DRIVE_EXPORT_FORMATS.keys():
-                    pass
+                    original_file_mimetype = constants.DRIVE_EXPORT_FORMATS[file_info["mimeType"]]
+                    # English: WARNING: Google Workspace File detected!
+                    print("\nAVISO: Arquivo do Google Workspace detectado!")
+                    # English: WARNING :{file_info['name']} can't be downloaded directly and needs to be exported to another format beforehand.
+                    print(f"AVISO: O arquivo {file_info['name']} não pode ser baixado diretamente e precisa ser convetido antes.\n")
+                    print("Digite um dos formatos abaixo para converter o arquivo a ser baixado:")
+                    print("-----------------------------------------------------")
+                    for formats in original_file_mimetype:
+                        print(f"// {formats['format']}")
+                    print("-----------------------------------------------------")
+                    print("NOTA: Alguns tipos de arquivo suportam apenas um tipo de formato.")            
+                    print("NOTA: Essa conversão não modificará seu arquivo salvo no Google Drive!\n")
+                    print("// A = Abortar operação")
+                    exp_format = input("=> ").strip().upper()
+                    
+                    if exp_format == "A":
+                        os.system('cls' if os.name == 'nt' else 'clear')
+                        continue
 
-                else:
-                    print(f"ERRO: O arquivo '{file_info['name']}', do tipo" 
-                        f"{constants.GOOGLE_WORKSPACE_MIMETYPES[file_info['mimeType']].strip('*')}, não possui suporte para download."  
+                    while True:
+                        try:
+                            exp_format = next(formats for formats in original_file_mimetype if exp_format == formats["format"])
+                            # TODO 
+                            request = drive.files().get(fileId=file_info["id"], fields="files(*)")
+                            print(request)
+                            break 
+                        except StopIteration:
+                            print("ERRO: Formato inválido. Escolha um dos formatos acima!")
+                    
+                
+                # Files that are not in DRIVE_EXPORT_FORMATS but are in
+                # GOOGLE_WORKSPACE_MIMETYPES are not supported for download
+                # (Google Maps, Forms or Sites)
+                elif file_info["mimeType"] in constants.GOOGLE_WORKSPACE_MIMETYPES.keys():
+                    os.system('cls' if os.name == 'nt' else 'clear')
+                    print(f"ERRO: O arquivo '{file_info['name']}', do tipo " 
+                        f"{constants.GOOGLE_WORKSPACE_MIMETYPES[file_info['mimeType']].strip('*')}, não possui suporte para download. "  
                         "Cancelando Operação...")
                     sleep(1)
                     continue
+
+
                 
-                print_file_stats(file_info["name"], file_info["size"])
+                # print_file_stats(file_info["name"], file_info["size"])
 
-                try:
-                    file_id = file_info[0]["id"]
-                    file_size = int(file_info[0]["size"])
-
-                except IndexError:
-                    print("Error: File not found in Drive.")
-                    print("=================================================================================================")
-                    continue
+  
                     
 
-                request = drive.files().get_media(fileId=file_id)
+                # request = drive.files().get_media(fileId=file_id)
                 with io.FileIO("C:/Users/Gustavo/VSCode_projects.zip", "w") as file:
                     downloader = MediaIoBaseDownload(file, request, chunksize=constants.CHUNK_SIZE)
                     done = False
                     # Loads the progress bar
-                    with tqdm(total=file_size, 
+                    # total=file_size
+                    with tqdm( 
                         unit="B", 
                         desc="Downloading ",
                         ncols=90, 
@@ -383,6 +414,7 @@ def upload_file(file_size, request):
     # English: Upload completed successfully!
     print("\n=> Upload concluído com sucesso!")
 
+
 def remove_localfile(file_dir):
     if Path(file_dir).exists:
         # English: Removing the created .zip file form the system...
@@ -403,21 +435,19 @@ def list_drive_files(search_results, GOOGLE_WORKSPACE_MIMETYPES):
     print(f"{'Num':^4}  | {'Tipo':^14} | {'Tamanho':^11}    |   Nome do Arquivo")
     print("---------------------------------------------------------------------------------------------------------------------------")
     for drive_file in search_results:
-        try:
-            print(f"#{counter:>4} | {GOOGLE_WORKSPACE_MIMETYPES[drive_file['mimeType']]:^14} | {convert_filesize(drive_file['size']):^11} --->   {drive_file['name']}")
-        # Handles if the file type is a Drive folder (has no declared size),
-        # or file is an ordinary file (not in the GOOGLE_WORKSPACE_MIMETYPES dict)
-        except KeyError:
-            if drive_file["mimeType"] in ["application/vnd.google-apps.folder", 
-                                         "application/vnd.google-apps.map",
-                                         "application/vnd.google-apps.site",
-                                         "application/vnd.google-apps.form"]:
-                print(f"#{counter:>4} | {GOOGLE_WORKSPACE_MIMETYPES[drive_file['mimeType']]:^14} | {'----':^11} --->   {drive_file['name']}") 
-            else:
-                print(f"#{counter:>4} | {'File':^14} | {convert_filesize(drive_file['size']):^11} --->   {drive_file['name']}")
+
+        if drive_file["mimeType"] in constants.NO_SIZE_TYPES:
+            print(f"#{counter:>4} | {GOOGLE_WORKSPACE_MIMETYPES[drive_file['mimeType']]:^14} | {'----':^11} --->   {drive_file['name']}")
+        
+        elif drive_file["mimeType"] in constants.GOOGLE_WORKSPACE_MIMETYPES.keys():
+             print(f"#{counter:>4} | {GOOGLE_WORKSPACE_MIMETYPES[drive_file['mimeType']]:^14} | {convert_filesize(drive_file['size']):^11} --->   {drive_file['name']}") 
+
+        else:
+            print(f"#{counter:>4} | {'File':^14} | {convert_filesize(drive_file['size']):^11} --->   {drive_file['name']}")
         counter += 1
     print("---------------------------------------------------------------------------------------------------------------------------")
     print("AVISO: Arquivos com o tipo marcado com '*' não possuem suporte para download.")
+
 
 def print_file_stats(file_name, file_size):
     print("\n-----------------------------------------------------------------------------------------------")
