@@ -23,31 +23,31 @@ GOOGLE_WORKSPACE_MIMETYPES = {"application/vnd.google-apps.script": "Script",
                             "application/vnd.google-apps.photo": "Photo"}
                             
 DRIVE_EXPORT_FORMATS = {"application/vnd.google-apps.script": 
-                            [{"format": "JSON", "mimetype": "application/vnd.google-apps.script+json"}],
+                            [{"format": "JSON", "mimetype": "application/vnd.google-apps.script+json", "extension": ".json"}],
                         
                         "application/vnd.google-apps.presentation": 
-                            [{"format": "MS PowerPoint", "mimetype": "application/vnd.openxmlformats-officedocument.presentationml.presentation"},
-                            {"format": "PDF", "mimetype": "application/pdf"}],
+                            [{"format": "MS PowerPoint", "mimetype": "application/vnd.openxmlformats-officedocument.presentationml.presentation", "extension": ".pptx"},
+                            {"format": "PDF", "mimetype": "application/pdf", "extension": ".pdf"}],
                         
                         "application/vnd.google-apps.jam": 
-                            [{"format": "PDF", "mimetype": "application/pdf"}],
+                            [{"format": "PDF", "mimetype": "application/pdf", "extension": ".pdf"}],
 
                         "application/vnd.google-apps.document": 
-                            [{"format": "MS Word document", "mimetype": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"}, 
-                            {"format": "HTML", "mimetype": "text/html"},
-                            {"format": "Plain Text", "mimetype": "text/plain"},
-                            {"format": "PDF", "mimetype": "application/pdf"}],
+                            [{"format": "MS Word document", "mimetype": "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "extension": ".docx"}, 
+                            {"format": "HTML", "mimetype": "text/html", "extension": ".html"},
+                            {"format": "Plain Text", "mimetype": "text/plain", "extension": ".txt"},
+                            {"format": "PDF", "mimetype": "application/pdf", "extension": ".pdf"}],
 
                         "application/vnd.google-apps.drawing": 
-                            [{"format": "PNG", "mimetype": "image/png"},
-                            {"format": "JPEG", "mimetype": "image/jpeg"},
-                            {"format": "SVG", "mimetype": "image/svg+xml"},
-                            {"format": "PDF", "mimetype": "application/pdf"}],
+                            [{"format": "PNG", "mimetype": "image/png", "extension": ".png"},
+                            {"format": "JPEG", "mimetype": "image/jpeg", "extension": ".jpeg"},
+                            {"format": "SVG", "mimetype": "image/svg+xml", "extension": ".svg"},
+                            {"format": "PDF", "mimetype": "application/pdf", "extension": ".pdf"}],
 
                         "application/vnd.google-apps.spreadsheet":
-                            [{"format": "MS Excel", "mimetype": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"},
-                            {"format": "CSV", "mimetype": "text/csv"},
-                            {"format": "PDF", "mimetype": "application/pdf"}]}
+                            [{"format": "MS Excel", "mimetype": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "extension": ".xlsx"},
+                            {"format": "CSV", "mimetype": "text/csv", "extension": ".csv"},
+                            {"format": "PDF", "mimetype": "application/pdf", "extension": ".pdf"}]}
 
 # Google Drive doesn't return the size for these types of files, or returns a
 # fixed value of 1KB.
