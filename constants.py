@@ -33,19 +33,16 @@ DRIVE_EXPORT_FORMATS = {"application/vnd.google-apps.script":
                             [{"format": "PDF", "mimetype": "application/pdf"}],
 
                         "application/vnd.google-apps.document": 
-                            [{"format": "PDF", "mimetype": "application/pdf"}, 
+                            [{"format": "MS Word document", "mimetype": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"}, 
                             {"format": "HTML", "mimetype": "text/html"},
                             {"format": "Plain Text", "mimetype": "text/plain"},
-                            {"format": "MS Word document", "mimetype": "application/vnd.openxmlformats-officedocument.wordprocessingml.document"}],
-
-                        "application/vnd.google-apps.drawing": 
-                            [{"format": "JPEG", "mimetype": "image/jpeg"},
-                            {"format": "PNG", "mimetype": "image/png"},
-                            {"format": "SVG", "mimetype": "image/svg+xml"},
                             {"format": "PDF", "mimetype": "application/pdf"}],
 
-                        #"application/vnd.google-apps.folder":
-                        #    [{"format": "ZIP", "mimetype": "application/zip"}],
+                        "application/vnd.google-apps.drawing": 
+                            [{"format": "PNG", "mimetype": "image/png"},
+                            {"format": "JPEG", "mimetype": "image/jpeg"},
+                            {"format": "SVG", "mimetype": "image/svg+xml"},
+                            {"format": "PDF", "mimetype": "application/pdf"}],
 
                         "application/vnd.google-apps.spreadsheet":
                             [{"format": "MS Excel", "mimetype": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"},
