@@ -16,6 +16,7 @@
  """
 
 from __future__ import print_function
+from logging.config import valid_ident
 
 
 from pathlib import Path
@@ -158,7 +159,30 @@ def main():
                 #do google workspace, oferecer opção de conversão baseado no
                 #tipo de arquivo.
 
-                if file_info["mimeType"] in constants.DRIVE_EXPORT_FORMATS.keys():
+                print("Digite o diretório onde o arquivo será baixado\n"
+                    "ou digite enter para escolher o diretório padrão ('CLID_folder'/downloads)\n")
+                
+                download_dir = Path(input(r"=> ").strip("\u202a").strip())
+                
+
+                # TODO: fazer aqui a verificação do mimetype do arquivo. Se for
+                #do google workspace, oferecer opção de conversão baseado no
+                #tipo de arquivo.
+
+                if file_info["mimeType"] == "application/vnd.google-apps.folder":
+
+                    # TODO: Alguma dessas duas funções esta fazendo com que os
+                    # arquivos sejam baixados sempre uma pasta acima ao invés da
+                    # pasta em que deveriam estar.
+
+                    # 1 - Prep base local dir
+                    directory = prepare_directory(download_dir, file_info["name"])
+                            
+                    # 2 - list files
+                    get_files(file_info["id"], directory, drive)
+                    
+
+                elif file_info["mimeType"] in constants.DRIVE_EXPORT_FORMATS.keys():
                     original_file_mimetype = constants.DRIVE_EXPORT_FORMATS[file_info["mimeType"]]
                     # English: WARNING: Google Workspace File detected!
                     print("\nAVISO: Arquivo do Google Workspace detectado!")
@@ -370,7 +394,6 @@ def convert_filesize(size_bytes):
         return "0B"
     size_unit = ("B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB")
     i = int(math.floor(math.log(size_bytes, 1024))) # i = index of size_unit tuple
-
     # unit_bytesize = 1 unit of size, in bytes.
     # i.e if the unit is in MB, it will store 1MB, in bytes (1048576 bytes)).
     unit_bytesize = math.pow(1024, i)
@@ -456,6 +479,93 @@ def print_file_stats(file_name, file_size):
     print("-----------------------------------------------------------------------------------------------\n")
     sleep(1)
 
+def prepare_directory(download_dir, gdrive_folder_name):
+    #folder_path = Path(f"{download_dir}/{gdrive_folder_name}")
+    folder_path = Path.joinpath(download_dir, gdrive_folder_name)
+    if not Path(folder_path).exists():
+        try:
+            Path(folder_path).mkdir()
+            return folder_path
+        except OSError:
+            print("Caractere inválido detectado no nome da pasta. Mude o nome da pasta retirando o caractere inválido [\\ / ? : * < > | \"]")
+            print("Encerrando programa...")
+            exit()
+    else:
+        print(f"A pasta no caminho {folder_path} já existe. Continuar mesmo assim? (Y/N)\n")
+        choice = input("=> ").strip().upper()
+    
+    if choice == "Y":
+        return folder_path
+
+    elif choice == "N":
+        exit()
+
+def get_files(file_id, directory, drive):
+    search_request = drive.files().list(corpora="user", 
+                                        fields="files(id, name, size, mimeType)", 
+                                        q=f"'{file_id}' in parents and trashed=false").execute()
+    search_results = search_request.get("files", [])
+
+    for file in search_results:
+        if file["mimeType"] == "application/vnd.google-apps.folder":
+            directory = prepare_directory(directory, file["name"])
+            get_files(file["id"], directory, drive)
+        else:
+            download_folder_file(file["id"], drive, directory, file["name"], file["mimeType"])
+
+
+
+def download_folder_file(file_id, drive, directory, file_name, file_mimetype):
+    file_path = Path.joinpath(directory, file_name)
+    if file_mimetype in constants.DRIVE_EXPORT_FORMATS.keys() and file_mimetype not in constants.NO_SIZE_TYPES:
+        export_mimetype = constants.DRIVE_EXPORT_FORMATS[file_mimetype][0]["mimetype"]
+        #TODO: apenas usar export_mimetype não basta, tem que renomear o arquivo
+        #pra conter a extensão correta. Ex: image/png tem q terminar o arquivo
+        #com .png
+        request = drive.files().export_media(fileId=file_id, mimeType=export_mimetype)
+        #valid += 1
+    
+    elif file_mimetype in constants.NO_SIZE_TYPES:
+        print(f"Arquivo {file_name} não é suportado. Pulando download do arquivo...")
+        #skipped +=1
+        return
+
+    else:
+        request = drive.files().get_media(fileId=file_id)
+
+    """ Ao fazer um download, assim que um chunk é baixado, ele é escrito no computador. Ao ler a quantidade
+    de bytes escritos em um arquivo, é possivel somar isso ao total de bytes baixados e fazer a diferença 
+    com o tamanho total em bytes da pasta. Assim sendo possivel fazer uma progress bar do download da pasta """
+    
+    with io.FileIO(file_path, "w") as file:
+        downloader = MediaIoBaseDownload(file, request, chunksize=constants.CHUNK_SIZE)
+        done = False
+        while done == False:
+                status, done = downloader.next_chunk()
+                print(F'Download {int(status.progress() * 100)}.')
+
+
+    """ with io.FileIO(file_path, "w") as file:
+        downloader = MediaIoBaseDownload(file, request, chunksize=constants.CHUNK_SIZE)
+        done = False
+        # Loads the progress bar
+        # total=file_size
+        with tqdm( 
+            unit="B", 
+            desc="Downloading ",
+            ncols=90, 
+            unit_scale=True,
+            unit_divisor=1024,
+            miniters=1,
+            bar_format="{desc}: {percentage:3.1f}%|{bar}| " 
+                "{n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]") as bar: 
+            while done == False:
+                status, done = downloader.next_chunk()
+                print(status)
+                print(done)
+                if status:
+                    bar.n = status.resumable_progress
+                    bar.refresh() """
 
 if __name__ == "__main__":
     main()
