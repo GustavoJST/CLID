@@ -180,7 +180,7 @@ def main():
                             
                     # 2 - list files
                     get_files(file_info["id"], directory, drive)
-                    
+
 
                 elif file_info["mimeType"] in constants.DRIVE_EXPORT_FORMATS.keys():
                     original_file_mimetype = constants.DRIVE_EXPORT_FORMATS[file_info["mimeType"]]
@@ -494,11 +494,16 @@ def prepare_directory(download_dir, gdrive_folder_name):
         print(f"A pasta no caminho {folder_path} já existe. Continuar mesmo assim? (Y/N)\n")
         choice = input("=> ").strip().upper()
     
-    if choice == "Y":
-        return folder_path
+    while True:
+        if choice == "Y":
+            return folder_path
 
-    elif choice == "N":
-        exit()
+
+        elif choice == "N":
+            return
+        
+        else:
+            print("ERRO: Escolha uma opção válida!")
 
 def get_files(file_id, directory, drive):
     search_request = drive.files().list(corpora="user", 
@@ -508,12 +513,9 @@ def get_files(file_id, directory, drive):
 
     for file in search_results:
         if file["mimeType"] == "application/vnd.google-apps.folder":
-            directory = prepare_directory(directory, file["name"])
-            get_files(file["id"], directory, drive)
+            get_files(file["id"], prepare_directory(directory, file["name"]), drive)
         else:
-            download_folder_file(file["id"], drive, directory, file["name"], file["mimeType"])
-
-
+            download_folder_file(file["id"], drive, directory, file["name"], file["mimeType"])       
 
 def download_folder_file(file_id, drive, directory, file_name, file_mimetype):
     file_path = Path.joinpath(directory, file_name)
@@ -523,6 +525,7 @@ def download_folder_file(file_id, drive, directory, file_name, file_mimetype):
         #pra conter a extensão correta. Ex: image/png tem q terminar o arquivo
         #com .png
         request = drive.files().export_media(fileId=file_id, mimeType=export_mimetype)
+        file = io.FileIO(f"{file_path}{constants.DRIVE_EXPORT_FORMATS[file_mimetype][0]['extension']}", "w")
         #valid += 1
     
     elif file_mimetype in constants.NO_SIZE_TYPES:
@@ -532,17 +535,18 @@ def download_folder_file(file_id, drive, directory, file_name, file_mimetype):
 
     else:
         request = drive.files().get_media(fileId=file_id)
+        file = io.FileIO(f"{file_path}", "w")
 
     """ Ao fazer um download, assim que um chunk é baixado, ele é escrito no computador. Ao ler a quantidade
     de bytes escritos em um arquivo, é possivel somar isso ao total de bytes baixados e fazer a diferença 
     com o tamanho total em bytes da pasta. Assim sendo possivel fazer uma progress bar do download da pasta """
     
-    with io.FileIO(file_path, "w") as file:
-        downloader = MediaIoBaseDownload(file, request, chunksize=constants.CHUNK_SIZE)
-        done = False
-        while done == False:
-                status, done = downloader.next_chunk()
-                print(F'Download {int(status.progress() * 100)}.')
+    downloader = MediaIoBaseDownload(file, request, chunksize=constants.CHUNK_SIZE)
+    done = False
+    while done == False:
+            status, done = downloader.next_chunk()
+            print(F'Download {int(status.progress() * 100)}.')
+    file.close()
 
 
     """ with io.FileIO(file_path, "w") as file:
