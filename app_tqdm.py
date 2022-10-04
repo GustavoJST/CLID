@@ -22,6 +22,7 @@ from pathlib import Path, WindowsPath
 import io
 import os
 import math
+import requests
 import zipfile
 from zipfile import ZipFile
 from time import sleep
@@ -92,18 +93,20 @@ def main():
 
                     if search_query == "LIST":
                         search_request = drive.files().list(corpora="user", 
-                                                            fields="files(id, name, size, mimeType)", 
+                                                            fields="files(id, name, size, mimeType, exportLinks)", 
                                                             q="'root' in parents and trashed=false").execute()
-                        search_results = search_request.get("files", [])
+                        #search_results = search_request.get("files", [])
+                        search_results = search_request["files"]
 
                     elif search_query == "A":
                         break   
 
                     else:
                         search_request = drive.files().list(corpora="user", 
-                                                            fields="files(id, name, size, mimeType)", 
+                                                            fields="files(id, name, size, mimeType, exportLinks)", 
                                                             q=f"name contains '{search_query}' and trashed=false").execute()
-                        search_results = search_request.get("files", [])
+                        #search_results = search_request.get("files", [])
+                        search_results = search_request["files"]
 
                     if len(search_results) == 0:
                         os.system('cls' if os.name == 'nt' else 'clear')
@@ -185,40 +188,17 @@ def main():
 
                 if file_info["mimeType"] == "application/vnd.google-apps.folder":
 
+                    file_info["name"] = check_download_dir(file_info["name"], download_dir)
                     directory = prepare_directory(download_dir, file_info["name"])
                     get_files(file_info["id"], directory, drive)
-
+                
+                
                 # If file is not a folder
                 elif file_info["mimeType"] in constants.DRIVE_EXPORT_FORMATS.keys():
-                    export_formats = constants.DRIVE_EXPORT_FORMATS[file_info["mimeType"]]
-                    # English: WARNING: Google Workspace File detected!
-                    print("\nAVISO: Arquivo do Google Workspace detectado!")
-                    # English: WARNING :{file_info['name']} can't be downloaded directly and needs to be exported to another format beforehand.
-                    print(f"AVISO: O arquivo {file_info['name']} não pode ser baixado diretamente e precisa ser convetido antes.\n")
-                    print("Digite um dos formatos abaixo para converter o arquivo a ser baixado:")
-                    print("-----------------------------------------------------")
-                    for formats in export_formats:
-                        print(f"// {formats['format']}")
-                    print("-----------------------------------------------------")
-                    print("NOTA: Alguns tipos de arquivo suportam apenas um tipo de formato.")            
-                    print("NOTA: Essa conversão não modificará seu arquivo salvo no Google Drive!\n")
-                    print("// A = Abortar operação")
-                    exp_format = input("=> ").strip().upper()
+                    # Colocar em uma função chamada download_exported_file()
+                    download_exported_file(file_info, drive, download_dir, creds)
                     
-                    if exp_format == "A":
-                        os.system('cls' if os.name == 'nt' else 'clear')
-                        continue
-
-                    while True:
-                        try:
-                            exp_format = next(formats for formats in export_formats if exp_format == formats["format"])
-                            # TODO 
-                            request = drive.files().get(fileId=file_info["id"], fields="files(*)")
-                            print(request)
-                            break 
-                        except StopIteration:
-                            print("ERRO: Formato inválido. Escolha um dos formatos acima!")
-                    
+         
                 # If file did not satisfied the if statements above, then it's a
                 # unsuported type (Google Form, Maps or Site)
                 elif file_info["mimeType"] in constants.NO_SIZE_TYPES:
@@ -230,24 +210,35 @@ def main():
                     continue
                 
                 # Handles ordinary files.
-                else:         
-                    while True:
+                else: 
+                    file_info["name"] = check_download_dir(file_info["name"], download_dir)
+                    progress_bar = load_progress_bar(int(file_info["size"]), "Fazendo Download")
+                    download_file(file_info["id"], drive, download_dir, file_info["name"] , file_info["mimeType"], progress_bar)
+                    progress_bar.close()
+
+                    """ while True:
+                        check_download_dir(file_info["name"])
                         if Path.joinpath(download_dir, file_info["name"]).exists():
                             print(f"\nAVISO: O arquivo {file_info['name']} já está presente no diretório de download.")
                             print("// S = Substituir o arquivo.")
                             print("// C = Baixar como cópia.\n")
                             choice = input("=> ").strip().upper()
 
-                            bar = tqdm(total=file_info["size"])
                             if choice != "S" and choice != "C":
                                 os.system('cls' if os.name == 'nt' else 'clear')
                                 print("ERRO: Escolha uma opção válida!\n")
+
                             elif choice == "S":
-                                download_file(file_info["id"], drive, download_dir, file_info["name"] , file_info["mimeType"])
-                                break
+                                    progress_bar = load_progress_bar(int(file_info["size"]), "Fazendo Download")
+                                    download_file(file_info["id"], drive, download_dir, file_info["name"] , file_info["mimeType"], progress_bar)
+                                    progress_bar.close()
+                                    break
+
                             else:
+                                progress_bar = load_progress_bar(int(file_info["size"]), "Fazendo Download")
                                 file_copy_name = f"Copy of {file_info['name']}"
                                 download_file(file_info["id"], drive, download_dir, file_copy_name , file_info["mimeType"])
+                                progress_bar.close()
                                 break
                         else:
                             # TODO: ter parâmetro folder_mode com valor bool,
@@ -255,7 +246,7 @@ def main():
                             progress_bar = load_progress_bar(int(file_info["size"]), "Fazendo Download")
                             download_file(file_info["id"], drive, download_dir, file_info["name"], 
                                                 file_info["mimeType"], progress_bar) 
-                            progress_bar.close()   
+                            progress_bar.close() """   
 
 
                 
@@ -413,30 +404,23 @@ def create_gdrive_copy(file_metadata, drive, drive_filename, file):
 def upload_file(file_size, request):
     print("\n=> Iniciando upload... (Aperte Ctrl+C para abortar)")
     sleep(1)
-    with tqdm(total=file_size, 
-        unit="B", 
-        desc="Fazendo upload ", 
-        ncols=90, 
-        unit_scale=True, 
-        unit_divisor=1024, 
-        miniters=1,
-        bar_format="{desc}: {percentage:3.1f}%|{bar}| "
-                "{n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]") as bar:     
-        response = None
-        while response is None:
-            status, response = request.next_chunk()
-            # If the file is smaller than the chunksize (100MB), it will be
-            # completely uploaded in a single chunk, skipping the if below.
-            # Trying to access status.resumable_progress after the
-            # file has been completely uploaded will raise AttributeError.  
-            if status:
-                bar.n = status.resumable_progress # Keeps track of the total size transfered.
-                bar.refresh()
+    progress_bar = load_progress_bar(file_size, "Fazendo upload") 
+    response = None
+    while response is None:
+        status, response = request.next_chunk()
+        # If the file is smaller than the chunksize (100MB), it will be
+        # completely uploaded in a single chunk, skipping the if below.
+        # Trying to access status.resumable_progress after the
+        # file has been completely uploaded will raise AttributeError.  
+        if status:
+            progress_bar.n = status.resumable_progress # Keeps track of the total size transfered.
+            progress_bar.refresh()
 
         # Updates bar when the file is uploaded in a single chunk.
         if status is None:
-            bar.n = file_size
-            bar.refresh() 
+            progress_bar.n = file_size
+            progress_bar.refresh() 
+    progress_bar.close()
     # English: Upload completed successfully!
     print("\n=> Upload concluído com sucesso!")
 
@@ -520,6 +504,8 @@ def get_files(folder_id, directory, drive):
 # TODO: no futuro, o parâmetro progress_bar talvez não será necessário, pois
 # todo download usará uma barra de progresso, mudando apenas a forma que é usada.
 def download_file(file_id, drive, directory, file_name, file_mimetype, progress_bar=None, folder_mode=True):
+    valid = 0
+    skipped = 0
     file_path = Path.joinpath(directory, file_name)
     if file_mimetype in constants.DRIVE_EXPORT_FORMATS.keys() and file_mimetype not in constants.NO_SIZE_TYPES:
         export_mimetype = constants.DRIVE_EXPORT_FORMATS[file_mimetype][0]["mimetype"]
@@ -545,7 +531,7 @@ def download_file(file_id, drive, directory, file_name, file_mimetype, progress_
     done = False
     while done == False:
         status, done = downloader.next_chunk()
-        if progress_bar != None and folder_mode == False:
+        if progress_bar != None:
             progress_bar.n = status.resumable_progress
             progress_bar.refresh()
         print(F'Download {int(status.progress() * 100)}.')
@@ -580,6 +566,83 @@ def load_progress_bar(total_file_size, description):
     return tqdm(total=int(total_file_size), desc=description, miniters=1, bar_format=bar_format, 
                 unit="B", unit_scale=True, unit_divisor=1024, dynamic_ncols=True)
 
+def download_exported_file(file_info, drive, download_dir, creds):
+    pbar_loaded = False
+    file_path = Path.joinpath(download_dir, file_info["name"])
+    export_formats = constants.DRIVE_EXPORT_FORMATS[file_info["mimeType"]]
+    # English: WARNING: Google Workspace File detected!
+    while True:
+        print("\nAVISO: Arquivo do Google Workspace detectado!")
+        # English: WARNING :{file_info['name']} can't be downloaded directly and needs to be exported to another format beforehand.
+        print(f"AVISO: O arquivo {file_info['name']} não pode ser baixado diretamente e precisa ser convetido antes.\n")
+        print("Digite um dos formatos abaixo para converter o arquivo a ser baixado:")
+        print("-----------------------------------------------------")
+        for formats in export_formats:
+            print(f"// {formats['format']}")
+        print("-----------------------------------------------------")
+        print("NOTA: Alguns tipos de arquivo suportam apenas um tipo de formato.")            
+        print("NOTA: Essa conversão não modificará seu arquivo salvo no Google Drive!\n")
+        print("// A = Abortar operação")
+        choosed_format = input("=> ").strip().upper()
+        
+        if choosed_format == "A":
+            os.system('cls' if os.name == 'nt' else 'clear')
+            return choosed_format
+
+        try:
+            format_info = next(formats for formats in export_formats if choosed_format == formats["format"].upper())
+            break
+        except StopIteration:
+            print("ERRO: Formato inválido. Escolha um dos formatos acima!")
+            continue
+    
+    file = io.FileIO(f"{file_path}{format_info['extension']}", "wb")
+
+    # Google Drive export() method has a 10MB file size limit.
+    # If the file is larger than 10MB, the program will use a
+    # direct GET request through a export URL instead of using export()
+    if int(file_info["size"]) > 10485760:
+        access_token = creds.token
+        download_url = file_info["exportLinks"][format_info["mimetype"]]
+        request = requests.get(download_url, headers={'Authorization': 'Bearer ' + access_token})
+        file.write(request.content)
+
+    else:
+        request = drive.files().export_media(fileId=file_info["id"], mimeType=format_info["mimetype"])
+        downloader = MediaIoBaseDownload(file, request, chunksize=constants.CHUNK_SIZE)
+        done = False
+        while done == False:
+            status, done = downloader.next_chunk()
+            # Different export formats have different total sizes, and because
+            # download._total_size is None until next_chunk() is called, we have
+            # to call load_progress_bar after at least one next_chunk() call.
+            if pbar_loaded == False:
+                progress_bar = load_progress_bar(downloader._total_size, "Fazendo download")
+                sleep(0.5)
+                pbar_loaded = True
+            progress_bar.n = status.resumable_progress
+            progress_bar.refresh()
+           #print(F'Download {int(status.progress() * 100)}.')
+    progress_bar.close()
+    file.close()
+
+def check_download_dir(file_name, download_dir):
+    while True:
+        if Path.joinpath(download_dir, file_name).exists():
+            print(f"\nAVISO: O arquivo {file_name} já está presente no diretório de download.")
+            print("// S = Substituir o arquivo.")
+            print("// C = Baixar como cópia.\n")
+            choice = input("=> ").strip().upper()
+
+            if choice != "S" and choice != "C":
+                os.system('cls' if os.name == 'nt' else 'clear')
+                print("ERRO: Escolha uma opção válida!\n")
+
+            elif choice == "S":
+                    return file_name
+
+            else:
+                return  f"Copy of {file_name}"
 
 if __name__ == "__main__":
     main()
