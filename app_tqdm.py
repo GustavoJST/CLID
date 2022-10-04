@@ -16,10 +16,9 @@
  """
 
 from __future__ import print_function
-from logging.config import valid_ident
 
 
-from pathlib import Path
+from pathlib import Path, WindowsPath
 import io
 import os
 import math
@@ -158,12 +157,27 @@ def main():
                 #TODO: fazer aqui a verificação do mimetype do arquivo. Se for
                 #do google workspace, oferecer opção de conversão baseado no
                 #tipo de arquivo.
+                while True:
+                    print("Digite o diretório onde o arquivo será baixado\n"
+                        "ou digite enter para escolher o diretório padrão ('CLID_folder'/downloads)\n")
+                    
+                    download_dir = Path(input(r"=> ").strip("\u202a").strip())
 
-                print("Digite o diretório onde o arquivo será baixado\n"
-                    "ou digite enter para escolher o diretório padrão ('CLID_folder'/downloads)\n")
-                
-                download_dir = Path(input(r"=> ").strip("\u202a").strip())
-                
+                    if download_dir == WindowsPath("."):
+                        if not Path("downloads").exists():
+                            Path("downloads").mkdir()
+                        download_dir = Path("downloads")
+                        break
+                    else:
+                        try:
+                            if not Path(download_dir).exists():
+                                Path(download_dir).mkdir()
+                                break
+                        except FileNotFoundError:
+                            os.system('cls' if os.name == 'nt' else 'clear')
+                            print(f"ERRO: Não foi possivel encontrar o caminho '{download_dir}'. "
+                                "Especifique um caminho ABSOLUTO ou aperte ENTER.\n")
+
 
                 # TODO: fazer aqui a verificação do mimetype do arquivo. Se for
                 #do google workspace, oferecer opção de conversão baseado no
@@ -171,17 +185,10 @@ def main():
 
                 if file_info["mimeType"] == "application/vnd.google-apps.folder":
 
-                    # TODO: Alguma dessas duas funções esta fazendo com que os
-                    # arquivos sejam baixados sempre uma pasta acima ao invés da
-                    # pasta em que deveriam estar.
-
-                    # 1 - Prep base local dir
                     directory = prepare_directory(download_dir, file_info["name"])
-                            
-                    # 2 - list files
                     get_files(file_info["id"], directory, drive)
 
-
+                # If file is not a folder
                 elif file_info["mimeType"] in constants.DRIVE_EXPORT_FORMATS.keys():
                     original_file_mimetype = constants.DRIVE_EXPORT_FORMATS[file_info["mimeType"]]
                     # English: WARNING: Google Workspace File detected!
@@ -213,23 +220,42 @@ def main():
                             print("ERRO: Formato inválido. Escolha um dos formatos acima!")
                     
                 
-                # Files that are not in DRIVE_EXPORT_FORMATS but are in
-                # GOOGLE_WORKSPACE_MIMETYPES are not supported for download
-                # (Google Maps, Forms or Sites)
-                elif file_info["mimeType"] in constants.GOOGLE_WORKSPACE_MIMETYPES.keys():
+                # If file did not satisfied the if statements above, then it's a
+                # unsuported type (Google Form, Maps or Site)
+                elif file_info["mimeType"] in constants.NO_SIZE_TYPES:
                     os.system('cls' if os.name == 'nt' else 'clear')
                     print(f"ERRO: O arquivo '{file_info['name']}', do tipo " 
                         f"{constants.GOOGLE_WORKSPACE_MIMETYPES[file_info['mimeType']].strip('*')}, não possui suporte para download. "  
                         "Cancelando Operação...")
                     sleep(1)
                     continue
+                
+                else:
+                    while True:
+                        if Path.joinpath(download_dir, file_info["name"]).exists():
+                            print(f"\nAVISO: O arquivo {file_info['name']} já está presente no diretório de download.")
+                            print("// S = Substituir o arquivo.")
+                            print("// C = Baixar como cópia.\n")
+                            choice = input("=> ").strip().upper()
+
+                            if choice != "S" and choice != "C":
+                                os.system('cls' if os.name == 'nt' else 'clear')
+                                print("ERRO: Escolha uma opção válida!\n")
+                            elif choice == "S":
+                                download_folder_file(file_info["id"], drive, download_dir, file_info["name"] , file_info["mimeType"])
+                                break
+                            else:
+                                file_copy_name = f"Copy of {file_info['name']}"
+                                download_folder_file(file_info["id"], drive, download_dir, file_copy_name , file_info["mimeType"])
+                                break
+                        else:
+                            download_folder_file(file_info["id"], drive, download_dir, file_copy_name , file_info["mimeType"])    
 
 
                 
                 # print_file_stats(file_info["name"], file_info["size"])
-
-  
-                    
+                
+                              
 
                 # request = drive.files().get_media(fileId=file_id)
                 with io.FileIO("C:/Users/Gustavo/VSCode_projects.zip", "w") as file:
@@ -256,15 +282,9 @@ def main():
 
                 print("\n=> Download concluído com sucesso!")
 
-                print("\n=> Iniciando extração do arquivo...")
-                sleep(0.5)
-                # Iterates through all files inside the zip file, extracting them.
-                with ZipFile("C:/Users/Gustavo/VSCode_projects.zip") as zfile:
-                    for files in tqdm(zfile.infolist(), desc="Extraindo ", ncols=90):
-                        zfile.extract(files,"C:/Users/Gustavo/VSCode_projects")
-                print("\n=> Extração e substituição da pasta concluídos com sucesso!")
+                
 
-            # TODO: how to handle htppError?                   
+                # TODO: how to handle htppError?                   
             except HttpError as error:
                 print(f"An error occurred: {error}")
                 return
@@ -497,18 +517,16 @@ def prepare_directory(download_dir, gdrive_folder_name):
     while True:
         if choice == "Y":
             return folder_path
-
-
         elif choice == "N":
+            # TODO: este return vazio irá causar erro. arrumar isso
             return
-        
         else:
             print("ERRO: Escolha uma opção válida!")
 
-def get_files(file_id, directory, drive):
+def get_files(folder_id, directory, drive):
     search_request = drive.files().list(corpora="user", 
                                         fields="files(id, name, size, mimeType)", 
-                                        q=f"'{file_id}' in parents and trashed=false").execute()
+                                        q=f"'{folder_id}' in parents and trashed=false").execute()
     search_results = search_request.get("files", [])
 
     for file in search_results:
@@ -521,9 +539,6 @@ def download_folder_file(file_id, drive, directory, file_name, file_mimetype):
     file_path = Path.joinpath(directory, file_name)
     if file_mimetype in constants.DRIVE_EXPORT_FORMATS.keys() and file_mimetype not in constants.NO_SIZE_TYPES:
         export_mimetype = constants.DRIVE_EXPORT_FORMATS[file_mimetype][0]["mimetype"]
-        #TODO: apenas usar export_mimetype não basta, tem que renomear o arquivo
-        #pra conter a extensão correta. Ex: image/png tem q terminar o arquivo
-        #com .png
         request = drive.files().export_media(fileId=file_id, mimeType=export_mimetype)
         file = io.FileIO(f"{file_path}{constants.DRIVE_EXPORT_FORMATS[file_mimetype][0]['extension']}", "w")
         #valid += 1
@@ -533,6 +548,7 @@ def download_folder_file(file_id, drive, directory, file_name, file_mimetype):
         #skipped +=1
         return
 
+    # Else handles ordinary files that already have an extension in their name.
     else:
         request = drive.files().get_media(fileId=file_id)
         file = io.FileIO(f"{file_path}", "w")
