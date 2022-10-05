@@ -93,7 +93,8 @@ def main():
                     if search_query == "LIST":
                         search_request = drive.files().list(corpora="user", 
                                                             fields="files(id, name, size, mimeType, exportLinks)", 
-                                                            q="'root' in parents and trashed=false").execute()
+                                                            q="'root' in parents and trashed=false", 
+                                                            orderBy="folder,name").execute()
                         #search_results = search_request.get("files", [])
                         search_results = search_request["files"]
 
@@ -103,7 +104,8 @@ def main():
                     else:
                         search_request = drive.files().list(corpora="user", 
                                                             fields="files(id, name, size, mimeType, exportLinks)", 
-                                                            q=f"name contains '{search_query}' and trashed=false").execute()
+                                                            q=f"name contains '{search_query}' and trashed=false", 
+                                                            orderBy="folder,name").execute()
                         #search_results = search_request.get("files", [])
                         search_results = search_request["files"]
 
@@ -461,34 +463,21 @@ def print_file_stats(file_name, file_size):
     sleep(1)
 
 def prepare_directory(download_dir, gdrive_folder_name):
-    #folder_path = Path(f"{download_dir}/{gdrive_folder_name}")
     folder_path = Path.joinpath(download_dir, gdrive_folder_name)
-    if not Path(folder_path).exists():
-        try:
-            Path(folder_path).mkdir()
-            return folder_path
-        except OSError:
-            print("Caractere inválido detectado no nome da pasta. Mude o nome da pasta retirando o caractere inválido [\\ / ? : * < > | \"]")
-            print("Encerrando programa...")
-            exit()
-    else:
-        print(f"A pasta no caminho {folder_path} já existe. Continuar mesmo assim? (Y/N)\n")
-        choice = input("=> ").strip().upper()
-    
-    while True:
-        if choice == "Y":
-            return folder_path
-        elif choice == "N":
-            # TODO: este return vazio irá causar erro. arrumar isso
-            return
-        else:
-            print("ERRO: Escolha uma opção válida!")
+    try:
+        Path(folder_path).mkdir()
+        return folder_path
+    except OSError:
+        print("Caractere inválido detectado no nome da pasta. Mude o nome da pasta retirando o caractere inválido [\\ / ? : * < > | \"]")
+        print("Encerrando programa...")
+        exit()
+  
 
 def get_files(folder_id, directory, drive):
     search_request = drive.files().list(corpora="user", 
                                         fields="files(id, name, size, mimeType)", 
                                         q=f"'{folder_id}' in parents and trashed=false").execute()
-    search_results = search_request.get("files", [])
+    search_results = search_request["files"]
 
     for file in search_results:
         if file["mimeType"] == "application/vnd.google-apps.folder":
@@ -498,6 +487,9 @@ def get_files(folder_id, directory, drive):
 
 # TODO: no futuro, o parâmetro progress_bar talvez não será necessário, pois
 # todo download usará uma barra de progresso, mudando apenas a forma que é usada.
+
+# Handles both single file downloads (as long as it's not Google Workspace type) and
+# folder file downloads.
 def download_file(file_id, drive, directory, file_name, file_mimetype, progress_bar=None, folder_mode=True):
     valid = 0
     skipped = 0
@@ -526,35 +518,14 @@ def download_file(file_id, drive, directory, file_name, file_mimetype, progress_
     done = False
     while done == False:
         status, done = downloader.next_chunk()
-        if progress_bar != None:
+        if progress_bar is not None:
             progress_bar.n = status.resumable_progress
             progress_bar.refresh()
-        print(F'Download {int(status.progress() * 100)}.')
+        #print(F'Download {int(status.progress() * 100)}.')
 
+    if progress_bar is not None:    
+        progress_bar.close()
     file.close()
-
-
-    """ with io.FileIO(file_path, "w") as file:
-        downloader = MediaIoBaseDownload(file, request, chunksize=constants.CHUNK_SIZE)
-        done = False
-        # Loads the progress bar
-        # total=file_size
-        with tqdm( 
-            unit="B", 
-            desc="Downloading ",
-            ncols=90, 
-            unit_scale=True,
-            unit_divisor=1024,
-            miniters=1,
-            bar_format="{desc}: {percentage:3.1f}%|{bar}| " 
-                "{n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]") as bar: 
-            while done == False:
-                status, done = downloader.next_chunk()
-                print(status)
-                print(done)
-                if status:
-                    bar.n = status.resumable_progress
-                    bar.refresh() """
 
 def load_progress_bar(total_file_size, description):
     bar_format = "{desc}: {percentage:3.1f}%|{bar}| {n_fmt}iB/{total_fmt}iB [{elapsed}<{remaining}, {rate_fmt}]"
@@ -650,6 +621,7 @@ def check_download_dir(file_name, download_dir):
 
             else:
                 return  f"Copy of {file_name}"
+        # Default case
         else:
             return file_name
             
