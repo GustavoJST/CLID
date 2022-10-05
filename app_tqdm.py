@@ -16,6 +16,10 @@
  """
 
 from __future__ import print_function
+import functools
+import shutil
+import sys
+import googleapiclient
 
 
 from pathlib import Path, WindowsPath
@@ -193,7 +197,7 @@ def main():
                     get_files(file_info["id"], directory, drive)
                 
                 
-                # If file is not a folder
+                # If file is a Google Workspace type but not a folder:
                 elif file_info["mimeType"] in constants.DRIVE_EXPORT_FORMATS.keys():
                     # Colocar em uma função chamada download_exported_file()
                     download_exported_file(file_info, drive, download_dir, creds)
@@ -209,7 +213,7 @@ def main():
                     sleep(1)
                     continue
                 
-                # Handles ordinary files.
+                # Handles ordinary files (files that aren't Google Workspace type).
                 else: 
                     file_info["name"] = check_download_dir(file_info["name"], download_dir)
                     progress_bar = load_progress_bar(int(file_info["size"]), "Fazendo Download")
@@ -386,7 +390,7 @@ def convert_filesize(size_bytes):
     size_bytes = int(size_bytes)
     if size_bytes == 0:
         return "0B"
-    size_unit = ("B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB")
+    size_unit = ("B", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "ZiB", "YiB")
     i = int(math.floor(math.log(size_bytes, 1024))) # i = index of size_unit tuple
     # unit_bytesize = 1 unit of size, in bytes.
     # i.e if the unit is in MB, it will store 1MB, in bytes (1048576 bytes)).
@@ -562,13 +566,12 @@ def download_file(file_id, drive, directory, file_name, file_mimetype, progress_
                     bar.refresh() """
 
 def load_progress_bar(total_file_size, description):
-    bar_format = "{desc}: {percentage:3.1f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]"
+    bar_format = "{desc}: {percentage:3.1f}%|{bar}| {n_fmt}iB/{total_fmt}iB [{elapsed}<{remaining}, {rate_fmt}]"
     return tqdm(total=int(total_file_size), desc=description, miniters=1, bar_format=bar_format, 
-                unit="B", unit_scale=True, unit_divisor=1024, dynamic_ncols=True)
+                unit="iB", unit_scale=True, unit_divisor=1024, dynamic_ncols=True)
 
 def download_exported_file(file_info, drive, download_dir, creds):
     pbar_loaded = False
-    file_path = Path.joinpath(download_dir, file_info["name"])
     export_formats = constants.DRIVE_EXPORT_FORMATS[file_info["mimeType"]]
     # English: WARNING: Google Workspace File detected!
     while True:
@@ -596,16 +599,51 @@ def download_exported_file(file_info, drive, download_dir, creds):
             print("ERRO: Formato inválido. Escolha um dos formatos acima!")
             continue
     
-    file = io.FileIO(f"{file_path}{format_info['extension']}", "wb")
+    file_name = check_download_dir(f"{file_info['name']}{format_info['extension']}", download_dir)
+    file = io.FileIO(f"{Path.joinpath(download_dir, file_name)}", "wb")
+    #file_path = Path.joinpath(download_dir, file_name)
+    
 
     # Google Drive export() method has a 10MB file size limit.
-    # If the file is larger than 10MB, the program will use a
+    # If the file is larger than 10MiB, the program will use a
     # direct GET request through a export URL instead of using export()
     if int(file_info["size"]) > 10485760:
         access_token = creds.token
-        download_url = file_info["exportLinks"][format_info["mimetype"]]
-        request = requests.get(download_url, headers={'Authorization': 'Bearer ' + access_token})
-        file.write(request.content)
+        download_url = file_info["exportLinks"][format_info["mimetype"]] 
+        header={'Authorization': 'Bearer ' + access_token, 'Accept-Enconding': 'None'}
+        print("AVISO: Arquivo é muito grande para usar o método export. "
+            "Tentando download direto via requisição HTTP...") 
+        request = requests.get(download_url, headers=header, stream=True)
+        file_size = len(request.content)
+        total_transfered = 0
+
+        progress_bar = load_progress_bar(file_size, "Writing to computer")
+        for chunk in request.iter_content(chunk_size=8196):
+            file.write(chunk)
+            total_transfered += len(chunk)
+            progress_bar.n = total_transfered
+            progress_bar.refresh()
+               
+        #request.raw.read = functools.partial(request.raw.read, decode_content=True)
+        #bar_format = "{desc}: {percentage:3.1f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]"
+        """ with tqdm.wrapattr(stream=request.raw, method="read", total=file_size, desc="Fazendo download") as r_raw:
+            with file_path.open("wb") as file:
+                shutil.copyfileobj(r_raw, file) """
+
+        #file.write(request.content)
+        """ if request.status_code != 200:
+            request.raise_for_status()  # Will only raise for 4xx codes, so...
+            raise RuntimeError(f"Request to {download_url} returned status code {request.status_code}")
+        file_size = int(request.headers.get('content-length', 0))
+
+        path = Path(file_name).expanduser().resolve()
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+        #desc = "(Unknown total file size)" if file_size == 0 else ""
+        request.raw.read = functools.partial(request.raw.read, decode_content=True)  # Decompress if needed
+        with tqdm.wrapattr(request.raw, "read", total=file_size, desc="Fazendo download") as r_raw:
+            file.write(r_raw) """
+            #shutil.copyfileobj(r_raw, file)
 
     else:
         request = drive.files().export_media(fileId=file_info["id"], mimeType=format_info["mimetype"])
@@ -643,7 +681,9 @@ def check_download_dir(file_name, download_dir):
 
             else:
                 return  f"Copy of {file_name}"
-
+        else:
+            return file_name
+            
 if __name__ == "__main__":
     main()
 
