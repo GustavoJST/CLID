@@ -16,11 +16,6 @@
  """
 
 from __future__ import print_function
-import functools
-import shutil
-import sys
-import googleapiclient
-
 
 from pathlib import Path, WindowsPath
 import io
@@ -168,6 +163,8 @@ def main():
                 while True:
                     print("Digite o diretório onde o arquivo será baixado\n"
                         "ou digite enter para escolher o diretório padrão ('CLID_folder'/downloads)\n")
+                    # TODO: Checar o que acontece quando o usuário colocar
+                    # caracteres proibidos pelo windows como nome da pasta.
                     download_dir = Path(input(r"=> ").strip("\u202a").strip())
 
                     if download_dir == WindowsPath("."):
@@ -178,7 +175,8 @@ def main():
                     else:
                         try:
                             if not Path(download_dir).exists():
-                                Path(download_dir).mkdir()
+                                raise FileNotFoundError
+                            else:
                                 break
                         except FileNotFoundError:
                             os.system('cls' if os.name == 'nt' else 'clear')
@@ -601,8 +599,6 @@ def download_exported_file(file_info, drive, download_dir, creds):
     
     file_name = check_download_dir(f"{file_info['name']}{format_info['extension']}", download_dir)
     file = io.FileIO(f"{Path.joinpath(download_dir, file_name)}", "wb")
-    #file_path = Path.joinpath(download_dir, file_name)
-    
 
     # Google Drive export() method has a 10MB file size limit.
     # If the file is larger than 10MiB, the program will use a
@@ -610,40 +606,20 @@ def download_exported_file(file_info, drive, download_dir, creds):
     if int(file_info["size"]) > 10485760:
         access_token = creds.token
         download_url = file_info["exportLinks"][format_info["mimetype"]] 
-        header={'Authorization': 'Bearer ' + access_token, 'Accept-Enconding': 'None'}
-        print("AVISO: Arquivo é muito grande para usar o método export. "
-            "Tentando download direto via requisição HTTP...") 
+        header={'Authorization': 'Bearer ' + access_token}
+        print("AVISO: Arquivo é muito grande para usar o método export.\n"
+            "Tentando download direto via requisição HTTP. Isto pode demorar um pouco...") 
         request = requests.get(download_url, headers=header, stream=True)
         file_size = len(request.content)
         total_transfered = 0
 
-        progress_bar = load_progress_bar(file_size, "Writing to computer")
+        progress_bar = load_progress_bar(file_size, "Fazendo Download")
         for chunk in request.iter_content(chunk_size=8196):
-            file.write(chunk)
-            total_transfered += len(chunk)
-            progress_bar.n = total_transfered
-            progress_bar.refresh()
-               
-        #request.raw.read = functools.partial(request.raw.read, decode_content=True)
-        #bar_format = "{desc}: {percentage:3.1f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]"
-        """ with tqdm.wrapattr(stream=request.raw, method="read", total=file_size, desc="Fazendo download") as r_raw:
-            with file_path.open("wb") as file:
-                shutil.copyfileobj(r_raw, file) """
-
-        #file.write(request.content)
-        """ if request.status_code != 200:
-            request.raise_for_status()  # Will only raise for 4xx codes, so...
-            raise RuntimeError(f"Request to {download_url} returned status code {request.status_code}")
-        file_size = int(request.headers.get('content-length', 0))
-
-        path = Path(file_name).expanduser().resolve()
-        path.parent.mkdir(parents=True, exist_ok=True)
-
-        #desc = "(Unknown total file size)" if file_size == 0 else ""
-        request.raw.read = functools.partial(request.raw.read, decode_content=True)  # Decompress if needed
-        with tqdm.wrapattr(request.raw, "read", total=file_size, desc="Fazendo download") as r_raw:
-            file.write(r_raw) """
-            #shutil.copyfileobj(r_raw, file)
+            if chunk:
+                file.write(chunk)
+                total_transfered += len(chunk)
+                progress_bar.n = total_transfered
+                progress_bar.refresh()
 
     else:
         request = drive.files().export_media(fileId=file_info["id"], mimeType=format_info["mimetype"])
