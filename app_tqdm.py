@@ -157,14 +157,9 @@ def main():
                     os.system('cls' if os.name == 'nt' else 'clear')
                     continue
 
-                #TODO: fazer aqui a verificação do mimetype do arquivo. Se for
-                #do google workspace, oferecer opção de conversão baseado no
-                #tipo de arquivo.
                 while True:
                     print("Digite o diretório onde o arquivo será baixado\n"
                         "ou digite enter para escolher o diretório padrão ('CLID_folder'/downloads)\n")
-                    # TODO: Checar o que acontece quando o usuário colocar
-                    # caracteres proibidos pelo windows como nome da pasta.
                     download_dir = Path(input(r"=> ").strip("\u202a").strip())
 
                     if download_dir == WindowsPath("."):
@@ -172,17 +167,15 @@ def main():
                             Path("downloads").mkdir()
                         download_dir = Path("downloads")
                         break
+
                     else:
-                        try:
-                            if not Path(download_dir).exists():
-                                raise FileNotFoundError
-                            else:
-                                break
-                        except FileNotFoundError:
+                        if not Path(download_dir).exists():
                             os.system('cls' if os.name == 'nt' else 'clear')
                             print(f"ERRO: Não foi possivel encontrar o caminho '{download_dir}'. "
                                 "Especifique um caminho ABSOLUTO ou aperte ENTER.\n")
-
+                            continue
+                        else:
+                            break
 
                 # TODO: fazer aqui a verificação do mimetype do arquivo. Se for
                 #do google workspace, oferecer opção de conversão baseado no
