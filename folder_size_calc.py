@@ -1,13 +1,11 @@
 # ===============================================================================
-# Slightly modified code from XtremeRahul's gdrive_folder_size project
+# Slightly modified code from XtremeRahul"s gdrive_folder_size project
 # Check => https://github.com/XtremeRahul/gdrive_folder_size
 # Thanks for your project!!
 # ===============================================================================
 
 from timeit import default_timer
-from app_tqdm import convert_filesize
-from constants import UNSUPPORTED_MIMETYPES
-from constants import DRIVE_EXPORT_FORMATS
+from constants import UNSUPPORTED_MIMETYPES, DRIVE_EXPORT_FORMATS
 
 class GoogleDriveSizeCalculate:
     def __init__(self, service=None):
@@ -26,8 +24,8 @@ class GoogleDriveSizeCalculate:
         try:
             drive_file = self.__service.files().get(fileId=file_id, 
                                                     fields="id, name, mimeType, size").execute()
-            name = drive_file['name']
-            if drive_file['mimeType'] == self.__G_DRIVE_DIR_MIME_TYPE:
+            name = drive_file["name"]
+            if drive_file["mimeType"] == self.__G_DRIVE_DIR_MIME_TYPE:
                 self.total_folders += 1
                 self.gDrive_directory(**drive_file)
             else:
@@ -35,15 +33,15 @@ class GoogleDriveSizeCalculate:
                 self.gDrive_file(**drive_file)
 
         except Exception as e:
-            print('\n')
-            if 'HttpError' in str(e):
+            print("\n")
+            if "HttpError" in str(e):
                 h_e = str(e)
                 ori = h_e
                 try:
-                    h_e = h_e.replace('<', '').replace('>', '')
-                    h_e = h_e.split('when')
+                    h_e = h_e.replace("<", "").replace(">", "")
+                    h_e = h_e.split("when")
                     f = h_e[0].strip()
-                    s = h_e[1].split('"')[1].split('"')[0].strip()
+                    s = h_e[1].split(""")[1].split(""")[0].strip()
                     e =  f"{f}\n{s}"
                 except:
                     e = ori
@@ -55,31 +53,32 @@ class GoogleDriveSizeCalculate:
             elif self.timeout == True:
                 return "Timeout"
             else:
+                # Import is here to avoid a circular import error 
+                from app_tqdm import convert_filesize
                 return {
-                    'Name': name,
-                    'Size': convert_filesize(self.total_bytes),
-                    'Files': self.total_files,
-                    'Folders': self.total_folders,
+                    "Archive": name,
+                    "Size": convert_filesize(self.total_bytes),
+                    "Files": self.total_files,
+                    "Folders": self.total_folders,
                     "Google Workspace Files": self.google_workspace_files,
-                    'Unsupported files (Google Forms, Sites or Maps)': self.total_unsupported_files
+                    "Unsupported files (Google Forms, Sites or Maps)": self.total_unsupported_files
                     }
-
 
     def list_drive_dir(self, file_id: str) -> list:
             # Aprox 0,45 segundos de tempo de execução dessa função, cada vez
             # que é chamada
             query = f"'{file_id}' in parents and (name contains '*') and trashed=false"
-            fields = 'nextPageToken, files(id, mimeType, size)'
+            fields = "nextPageToken, files(id, mimeType, size)"
             page_token = None
             page_size = 1000
            
             while True:
                 response = self.__service.files().list(q=query, pageToken=page_token,
-                                                    fields=fields, corpora='user',
+                                                    fields=fields, corpora="user",
                                                     pageSize=page_size,
-                                                    orderBy='folder, name').execute()
+                                                    orderBy="folder, name").execute()
                                                
-                page_token = response.get('nextPageToken', None)
+                page_token = response.get("nextPageToken", None)
                 if page_token is None:
                     break
             return response["files"]
@@ -87,7 +86,7 @@ class GoogleDriveSizeCalculate:
     def gDrive_file(self, **kwargs):
         # Tempo na casa dos 10^-6 segundos de execução, bottleneck n é aqui
         try:
-            size = int(kwargs['size'])
+            size = int(kwargs["size"])
         except:
             size = 0
         self.total_bytes += size
@@ -97,7 +96,7 @@ class GoogleDriveSizeCalculate:
         """ if elapsed_time >= 10:
             self.timeout = True
             return """
-        files = self.list_drive_dir(kwargs['id'])    
+        files = self.list_drive_dir(kwargs["id"])    
         if len(files) == 0:
             return
         for file_ in files:

@@ -1,9 +1,6 @@
-"""  TODO: 
-    * Nome do programa = CLID - The CLI Google Drive ou CLI Drive - Google Drive up/downloader.
-    * Caso a pesquisa resulte em multiplos arquivos com o mesmo nome, avisar o usuário que multiplos arquivos foram encontrados (WARNING:),
-        e listar os arquivos com mesmo nome encontrados, seguido de um prompt para escolher qual arquivo baixar, OU listar/não listar os arquivos
-        com nomes iguais, seguido de um prompt se o usuário deseja continuar ou abortar (Y/N).
-    * Caso o arquivo seja uma pasta, ele sera baixado como arquivo zip
+"""  TODO:
+    * Nome do programa = CLID - The CLI Google Drive ou CLI Drive - Google Drive
+      up/downloader.
     * Caso arquivo baixado seja um .zip ou (outro compactado, ver possibilidade) Oferecer opção para descompactar
     * Arquivos baixados/descompactados serão colocados na pasta downloads (ver se da pra achar pasta download do pc independente do sistema),
         caso contrario, fazer uma pasta chamada downloads dentro do root do CLID.
@@ -13,6 +10,7 @@
     * usar os.system('cls' if os.name == 'nt' else 'clear') para limpar os
       terminais e deixar o terminal menos poluido
     * Usar => apenas para user input e // para multiplas escolhas.
+    * Substituir a opção S no menu por uma de calcular o tamanho de pastas.
  """
 
 from __future__ import print_function
@@ -35,6 +33,8 @@ from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaFileUpload
 from googleapiclient.http import MediaIoBaseDownload
 import constants
+from folder_size_calc import GoogleDriveSizeCalculate
+
 
 # If modifying these scopes, delete the file token.json.
 SCOPES = ["https://www.googleapis.com/auth/drive"]
@@ -42,10 +42,10 @@ SCOPES = ["https://www.googleapis.com/auth/drive"]
 def main():
     creds = None
     # The file token.json stores the user's access and refresh tokens, and is
-    # created automatically when the authorization flow completes for the first time
+    # created automatically when the authorization flow completes for the first time.
     if Path("token.json").exists():
         creds = Credentials.from_authorized_user_file("token.json", SCOPES)
-    # If there are no (valid) credentials available, let the user log in
+    # If there are no (valid) credentials available, let the user log in.
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
@@ -53,13 +53,13 @@ def main():
             flow = InstalledAppFlow.from_client_secrets_file(
                 "credentials.json", SCOPES)
             creds = flow.run_local_server(port=0)
-        # Save the credentials for the next run
+        # Save the credentials for the next run.
         with open("token.json", "w") as token:
             token.write(creds.to_json())
 
-    # Builds the google drive service instance 
+    # Builds the google drive service instance.
     drive = build("drive", "v3", credentials=creds)
-    
+
     while True:
         file_created = False
         print ("\n" "\"d\" = download, extrair e substituir a pasta atual \n" 
@@ -69,7 +69,7 @@ def main():
                 
         option = input("Digite uma opção: ").lower().strip()
         if option == "e":
-            break 
+            break
         
         print("=================================================================================================")
         if option not in constants.OPTIONS:
@@ -119,7 +119,6 @@ def main():
                     if len(search_results) > 1:
                         while search_completed != True:
                             try:
-                                # TODO: add abort system
                                 file_number = input("\nSelecione o número do arquivo para download, ou..."
                                                         "\n// A = Abortar ação\n \n"
                                                         "=> ").strip().upper()
@@ -160,8 +159,8 @@ def main():
                     continue
 
                 while True:
-                    print("Digite o diretório onde o arquivo será baixado\n"
-                        "ou digite enter para escolher o diretório padrão ('CLID_folder'/downloads)\n")
+                    print("\nDigite o diretório onde o arquivo será baixado\n"
+                        "ou aperte enter para escolher o diretório padrão ([CLID_folder]/downloads)\n")
                     download_dir = Path(input(r"=> ").strip("\u202a").strip())
 
                     if download_dir == WindowsPath("."):
@@ -179,14 +178,17 @@ def main():
                         else:
                             break
 
-                # TODO: fazer aqui a verificação do mimetype do arquivo. Se for
-                #do google workspace, oferecer opção de conversão baseado no
-                #tipo de arquivo.
-
                 if file_info["mimeType"] == "application/vnd.google-apps.folder":
 
                     file_info["name"] = check_download_dir(file_info["name"], download_dir)
                     directory = prepare_directory(download_dir, file_info["name"])
+                    print("\nCalculando tamanho da pasta...")
+                    folder_stats = GoogleDriveSizeCalculate(drive).gdrive_checker(file_info["id"])
+                    if folder_stats == "Timeout":
+                        print("\nWARNING: Operação durou mais que o esperado. Continuando para download...")
+                        sleep(0.5)
+                    else:
+                        print_file_stats(folder_stats=folder_stats, folder_mode=True)
                     get_files(file_info["id"], directory, drive)
                 
                 
@@ -200,7 +202,7 @@ def main():
                 # unsuported type (Google Form, Maps or Site)
                 elif file_info["mimeType"] in constants.NO_SIZE_TYPES:
                     os.system('cls' if os.name == 'nt' else 'clear')
-                    print(f"ERRO: O arquivo '{file_info['name']}', do tipo " 
+                    print(f"\nERRO: O arquivo '{file_info['name']}', do tipo " 
                         f"{constants.GOOGLE_WORKSPACE_MIMETYPES[file_info['mimeType']].strip('*')}, não possui suporte para download. "  
                         "Cancelando Operação...")
                     sleep(1)
@@ -213,44 +215,10 @@ def main():
                     download_file(file_info["id"], drive, download_dir, file_info["name"] , file_info["mimeType"], progress_bar)
                     progress_bar.close()
 
-                    """ while True:
-                        check_download_dir(file_info["name"])
-                        if Path.joinpath(download_dir, file_info["name"]).exists():
-                            print(f"\nAVISO: O arquivo {file_info['name']} já está presente no diretório de download.")
-                            print("// S = Substituir o arquivo.")
-                            print("// C = Baixar como cópia.\n")
-                            choice = input("=> ").strip().upper()
-
-                            if choice != "S" and choice != "C":
-                                os.system('cls' if os.name == 'nt' else 'clear')
-                                print("ERRO: Escolha uma opção válida!\n")
-
-                            elif choice == "S":
-                                    progress_bar = load_progress_bar(int(file_info["size"]), "Fazendo Download")
-                                    download_file(file_info["id"], drive, download_dir, file_info["name"] , file_info["mimeType"], progress_bar)
-                                    progress_bar.close()
-                                    break
-
-                            else:
-                                progress_bar = load_progress_bar(int(file_info["size"]), "Fazendo Download")
-                                file_copy_name = f"Copy of {file_info['name']}"
-                                download_file(file_info["id"], drive, download_dir, file_copy_name , file_info["mimeType"])
-                                progress_bar.close()
-                                break
-                        else:
-                            # TODO: ter parâmetro folder_mode com valor bool,
-                            # que muda o comportamento da função download_file.                
-                            progress_bar = load_progress_bar(int(file_info["size"]), "Fazendo Download")
-                            download_file(file_info["id"], drive, download_dir, file_info["name"], 
-                                                file_info["mimeType"], progress_bar) 
-                            progress_bar.close() """   
-
-
-                
+  
                 # print_file_stats(file_info["name"], file_info["size"])
                 
-              
-                # request = drive.files().get_media(fileId=file_id)
+
 
                 print("\n=> Download concluído com sucesso!")
 
@@ -319,7 +287,7 @@ def main():
                 # In case there's only one file with the exact same name
                 # as the local file, in google drive.
                 elif len(items) > 0 and drive_filename == local_filename:
-                    upload_choice = None;
+                    upload_choice = None
                     while upload_choice not in ["Y", "C", "A"]:
                         upload_choice = input("AVISO: O arquivo já existe no Google Drive! Pressione:\n"
                                             "// Y = Atualizar o arquivo\n" 
@@ -368,7 +336,7 @@ def compact_directory(file_dir):
         file_quantity += 1         
         
     with ZipFile(target_path, "w", zipfile.ZIP_DEFLATED) as zfile:
-        for files in tqdm(file_dir.rglob("*"), total=file_quantity, desc="Compactando ", ncols=90):
+        for files in tqdm(file_dir.rglob("*"), total=file_quantity, desc="Compactando ", dynamic_ncols=True):
             zfile.write(files, files.relative_to(file_dir)) 
 
     file_metadata = {
@@ -383,7 +351,7 @@ def convert_filesize(size_bytes):
     size_bytes = int(size_bytes)
     if size_bytes == 0:
         return "0B"
-    size_unit = ("B", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB", "ZiB", "YiB")
+    size_unit = ("B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB")
     i = int(math.floor(math.log(size_bytes, 1024))) # i = index of size_unit tuple
     # unit_bytesize = 1 unit of size, in bytes.
     # i.e if the unit is in MB, it will store 1MB, in bytes (1048576 bytes)).
@@ -399,7 +367,7 @@ def create_gdrive_copy(file_metadata, drive, drive_filename, file):
 
 
 def upload_file(file_size, request):
-    print("\n=> Iniciando upload... (Aperte Ctrl+C para abortar)")
+    print("\nIniciando upload... (Aperte Ctrl+C para abortar)")
     sleep(1)
     progress_bar = load_progress_bar(file_size, "Fazendo upload") 
     response = None
@@ -419,17 +387,17 @@ def upload_file(file_size, request):
             progress_bar.refresh() 
     progress_bar.close()
     # English: Upload completed successfully!
-    print("\n=> Upload concluído com sucesso!")
+    print("\nUpload concluído com sucesso!")
 
 
 def remove_localfile(file_dir):
     if Path(file_dir).exists:
         # English: Removing the created .zip file form the system...
-        print("\n=> Removendo arquivo ZIP do sistema...")
+        print("\nRemovendo arquivo ZIP do sistema...")
         sleep(1)
         Path(file_dir).unlink()
         # English: Local .zip file removed successfully!
-        print("\n=> Remoção do arquivo local concluido!")
+        print("\nRemoção do arquivo local concluido!")
     else:
         # English: ERROR: File {file_dir} doesn't exist in the system. Aborting operation...
         print(f"\nERRO: Arquivo {file_dir} não existe no sitema. Pulando operação...\n")
@@ -437,14 +405,14 @@ def remove_localfile(file_dir):
 
 def list_drive_files(search_results, GOOGLE_WORKSPACE_MIMETYPES):
     counter = 1
-    print("\n=> Os seguintes arquivos foram encontrados: ")
+    print("\nOs seguintes arquivos foram encontrados: ")
     print("---------------------------------------------------------------------------------------------------------------------------")
     print(f"{'Num':^4}  | {'Tipo':^14} | {'Tamanho':^11}    |   Nome do Arquivo")
     print("---------------------------------------------------------------------------------------------------------------------------")
     for drive_file in search_results:
 
         if drive_file["mimeType"] in constants.NO_SIZE_TYPES:
-            print(f"#{counter:>4} | {GOOGLE_WORKSPACE_MIMETYPES[drive_file['mimeType']]:^14} | {'----':^11} --->   {drive_file['name']}")
+            print(f"#{counter:>4} | {GOOGLE_WORKSPACE_MIMETYPES[drive_file['mimeType']]:^14} | {'-----':^11} --->   {drive_file['name']}")
         
         elif drive_file["mimeType"] in constants.GOOGLE_WORKSPACE_MIMETYPES.keys():
              print(f"#{counter:>4} | {GOOGLE_WORKSPACE_MIMETYPES[drive_file['mimeType']]:^14} | {convert_filesize(drive_file['size']):^11} --->   {drive_file['name']}") 
@@ -455,20 +423,29 @@ def list_drive_files(search_results, GOOGLE_WORKSPACE_MIMETYPES):
     print("---------------------------------------------------------------------------------------------------------------------------")
     print("AVISO: Arquivos com o tipo marcado com '*' não possuem suporte para download.")
 
-def print_file_stats(file_name, file_size):
-    print("\n-----------------------------------------------------------------------------------------------")
-    print(f"// Arquivo: {file_name}")
-    print(f"// Tamanho: {convert_filesize(file_size)}")
-    print("-----------------------------------------------------------------------------------------------\n")
-    sleep(1)
+def print_file_stats(file_name=None, file_size=None, folder_mode=False, folder_stats=None):
+    if folder_mode == True:
+        print("\n-----------------------------------------------------------------------------------------------")
+        for key, value in folder_stats.items():
+            print(f"// {key}: {value}")
+        print("-----------------------------------------------------------------------------------------------\n")
+    else:   
+        print("\n-----------------------------------------------------------------------------------------------")
+        print(f"// Arquivo: {file_name}")
+        print(f"// Tamanho: {convert_filesize(file_size)}")
+        print("-----------------------------------------------------------------------------------------------\n")
+        sleep(1)
 
 def prepare_directory(download_dir, gdrive_folder_name):
     folder_path = Path.joinpath(download_dir, gdrive_folder_name)
     try:
         Path(folder_path).mkdir()
         return folder_path
+
+    # TODO: Aparentemente,  fazer download colocando a opção de substituir a
+    # pasta retorna OSError. Fix this!
     except OSError:
-        print("Caractere inválido detectado no nome da pasta. Mude o nome da pasta retirando o caractere inválido [\\ / ? : * < > | \"]")
+        print("\nCaractere inválido detectado no nome da pasta. Mude o nome da pasta retirando o caractere inválido [\\ / ? : * < > | \"]")
         print("Encerrando programa...")
         exit()
   
@@ -488,19 +465,22 @@ def get_files(folder_id, directory, drive):
 # TODO: no futuro, o parâmetro progress_bar talvez não será necessário, pois
 # todo download usará uma barra de progresso, mudando apenas a forma que é usada.
 
+# TODO: ter parâmetro folder_mode com valor bool,
+# que muda o comportamento da função download_file.
+
 # Handles both single file downloads (as long as it's not Google Workspace type) and
 # folder file downloads.
 def download_file(file_id, drive, directory, file_name, file_mimetype, progress_bar=None, folder_mode=True):
     valid = 0
     skipped = 0
     file_path = Path.joinpath(directory, file_name)
-    if file_mimetype in constants.DRIVE_EXPORT_FORMATS.keys() and file_mimetype not in constants.NO_SIZE_TYPES:
+    if file_mimetype in constants.DRIVE_EXPORT_FORMATS.keys() and file_mimetype not in constants.UNSUPPORTED_MIMETYPES:
         export_mimetype = constants.DRIVE_EXPORT_FORMATS[file_mimetype][0]["mimetype"]
         request = drive.files().export_media(fileId=file_id, mimeType=export_mimetype)
         file = io.FileIO(f"{file_path}{constants.DRIVE_EXPORT_FORMATS[file_mimetype][0]['extension']}", "w")
         #valid += 1
     
-    elif file_mimetype in constants.NO_SIZE_TYPES:
+    elif file_mimetype in constants.UNSUPPORTED_MIMETYPES:
         print(f"Arquivo {file_name} não é suportado. Pulando download do arquivo...")
         #skipped +=1
         return
@@ -521,16 +501,16 @@ def download_file(file_id, drive, directory, file_name, file_mimetype, progress_
         if progress_bar is not None:
             progress_bar.n = status.resumable_progress
             progress_bar.refresh()
-        #print(F'Download {int(status.progress() * 100)}.')
 
     if progress_bar is not None:    
         progress_bar.close()
     file.close()
 
+
 def load_progress_bar(total_file_size, description):
-    bar_format = "{desc}: {percentage:3.1f}%|{bar}| {n_fmt}iB/{total_fmt}iB [{elapsed}<{remaining}, {rate_fmt}]"
+    bar_format = "{desc}: {percentage:3.1f}%|{bar}| {n_fmt}B/{total_fmt}B [{elapsed}<{remaining}, {rate_fmt}]"
     return tqdm(total=int(total_file_size), desc=description, miniters=1, bar_format=bar_format, 
-                unit="iB", unit_scale=True, unit_divisor=1024, dynamic_ncols=True)
+                unit="B", unit_scale=True, unit_divisor=1024, dynamic_ncols=True)
 
 def download_exported_file(file_info, drive, download_dir, creds):
     pbar_loaded = False
@@ -543,7 +523,7 @@ def download_exported_file(file_info, drive, download_dir, creds):
         print("Digite um dos formatos abaixo para converter o arquivo a ser baixado:")
         print("-----------------------------------------------------")
         for formats in export_formats:
-            print(f"// {formats['format']}")
+            print(f"# {formats['format']}")
         print("-----------------------------------------------------")
         print("NOTA: Alguns tipos de arquivo suportam apenas um tipo de formato.")            
         print("NOTA: Essa conversão não modificará seu arquivo salvo no Google Drive!\n")
@@ -564,9 +544,13 @@ def download_exported_file(file_info, drive, download_dir, creds):
     file_name = check_download_dir(f"{file_info['name']}{format_info['extension']}", download_dir)
     file = io.FileIO(f"{Path.joinpath(download_dir, file_name)}", "wb")
 
+    # TODO: Baixando a pasta dummy retorna erro This file is too large to be
+    # exported. Possivelmente é o arquivo google slides. Verificar se ele está
+    # passando pela condição de tamanho abaixo. 
+    
     # Google Drive export() method has a 10MB file size limit.
-    # If the file is larger than 10MiB, the program will use a
-    # direct GET request through a export URL instead of using export()
+    # If the file is larger than 10MB, the program will use a
+    # direct GET request with a export URL, instead of using export().
     if int(file_info["size"]) > 10485760:
         access_token = creds.token
         download_url = file_info["exportLinks"][format_info["mimetype"]] 
@@ -576,7 +560,6 @@ def download_exported_file(file_info, drive, download_dir, creds):
         request = requests.get(download_url, headers=header, stream=True)
         file_size = len(request.content)
         total_transfered = 0
-
         progress_bar = load_progress_bar(file_size, "Fazendo Download")
         for chunk in request.iter_content(chunk_size=8196):
             if chunk:
