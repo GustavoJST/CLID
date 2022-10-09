@@ -8,7 +8,7 @@ from timeit import default_timer
 from constants import UNSUPPORTED_MIMETYPES, DRIVE_EXPORT_FORMATS
 
 class GoogleDriveSizeCalculate:
-    def __init__(self, service=None):
+    def __init__(self, service):
         self.__G_DRIVE_DIR_MIME_TYPE = "application/vnd.google-apps.folder"
         self.__service = service
         self.total_bytes = 0
@@ -55,18 +55,16 @@ class GoogleDriveSizeCalculate:
             else:
                 # Import is here to avoid a circular import error 
                 from app_tqdm import convert_filesize
-                return {
-                    "Archive": name,
-                    "Size": convert_filesize(self.total_bytes),
-                    "Files": self.total_files,
-                    "Folders": self.total_folders,
-                    "Google Workspace Files": self.google_workspace_files,
-                    "Unsupported files (Google Forms, Sites or Maps)": self.total_unsupported_files
-                    }
+                return {"Archive": name,
+                        "Size": convert_filesize(self.total_bytes),
+                        "Files": self.total_files,
+                        "Folders": self.total_folders,
+                        "Google Workspace Files": self.google_workspace_files,
+                        "Unsupported files (Google Forms, Sites or Maps)": self.total_unsupported_files,
+                        "Bytes": self.total_bytes}
+                    
 
     def list_drive_dir(self, file_id: str) -> list:
-            # Aprox 0,45 segundos de tempo de execução dessa função, cada vez
-            # que é chamada
             query = f"'{file_id}' in parents and (name contains '*') and trashed=false"
             fields = "nextPageToken, files(id, mimeType, size)"
             page_token = None
@@ -84,7 +82,7 @@ class GoogleDriveSizeCalculate:
             return response["files"]
 
     def gDrive_file(self, **kwargs):
-        # Tempo na casa dos 10^-6 segundos de execução, bottleneck n é aqui
+
         try:
             size = int(kwargs["size"])
         except:
@@ -93,9 +91,9 @@ class GoogleDriveSizeCalculate:
 
     def gDrive_directory(self, **kwargs) -> None:
         elapsed_time = default_timer() - self.start
-        """ if elapsed_time >= 10:
+        if elapsed_time >= 10:
             self.timeout = True
-            return """
+            return
         files = self.list_drive_dir(kwargs["id"])    
         if len(files) == 0:
             return
