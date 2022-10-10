@@ -1,16 +1,15 @@
 """  TODO:
     * Nome do programa = CLID - The CLI Google Drive ou CLI Drive - Google Drive
       up/downloader.
-    * Caso arquivo baixado seja um .zip ou (outro compactado, ver possibilidade) Oferecer opção para descompactar
     * Arquivos baixados/descompactados serão colocados na pasta downloads (ver se da pra achar pasta download do pc independente do sistema),
         caso contrario, fazer uma pasta chamada downloads dentro do root do CLID.
     * Verificar possiblidade de mudar o algoritmo de progresso de compactação.
         Mudar para atualizar a barra conforme os bytes forem lidos,
         e não conforme um arquivo inteiro é comprimido.
-    * usar os.system('cls' if os.name == 'nt' else 'clear') para limpar os
-      terminais e deixar o terminal menos poluido
     * Usar => apenas para user input e // para multiplas escolhas.
     * Substituir a opção S no menu por uma de calcular o tamanho de pastas.
+    * Se o arquivo baixado for um .zip, perguntar se ele quer extrair o arquivo.
+      Talvez ter suporte a tar.gz?
  """
 
 from __future__ import print_function
@@ -58,10 +57,10 @@ def main():
     
     while True:
         file_created = False
-        print ("\n" "\"d\" = download, extrair e substituir a pasta atual \n" 
-                    "\"c\" = compactar e fazer upload p/ o drive \n"
-                    "\"s\" = verificar se o arquivo já existe e sua versão \n"
-                    "\"e\" = sair do programa \n")
+        print ("\n" "\"d\" = Download file \n" 
+                    "\"c\" = Upload file \n"
+                    "\"s\" = Calculate folder size \n"
+                    "\"e\" = Exit \n")
                 
         option = input("Digite uma opção: ").lower().strip()
         if option == "e":
@@ -102,7 +101,6 @@ def main():
                                                             fields="files(id, name, size, mimeType, exportLinks)", 
                                                             q=f"name contains '{search_query}' and trashed=false", 
                                                             orderBy="folder,name").execute()
-                        #search_results = search_request.get("files", [])
                         search_results = search_request["files"]
 
                     if len(search_results) == 0:
@@ -202,7 +200,7 @@ def main():
                     
                     folder_downloader.get_files(file_info["id"], directory, drive)
                     progress_bar.close()
-                
+                        
                 # If file is a Google Workspace type but not a folder:
                 elif file_info["mimeType"] in constants.DRIVE_EXPORT_FORMATS.keys():           
                     systems.print_file_stats(file_info["name"], file_info["size"])
@@ -224,13 +222,29 @@ def main():
                     file_info["name"] = systems.check_download_dir(file_info["name"], download_dir)
                     print("\nTo be downloaded:")
                     systems.print_file_stats(file_info["name"], file_info["size"])
-                    progress_bar = systems.load_progress_bar("Fazendo Download", file_info["size"])
+                    progress_bar = systems.load_progress_bar("Downloading", file_info["size"])
                     file_downloader = DownloadSystem(progress_bar=progress_bar)
                     file_downloader.download_file(drive, download_dir, file_info)
                     progress_bar.close()
                                    
                 print("\nDownload concluído com sucesso!")
+                if DownloadSystem.total_skipped > 0:
+                    while True:
+                        print(f"\n{DownloadSystem.total_skipped} file(s) were skipped during download")
+                        print("Do you want to list the skipped files? (Y/N)")
+                        choice = input("=> ").upper().strip()
 
+                        if choice == "Y":
+                            systems.list_skipped_files(DownloadSystem.skipped_files, constants.GOOGLE_WORKSPACE_MIMETYPES)                            
+                            input("\nPress any key to continue")
+                            break
+                        
+                        elif choice == "N":
+                            break
+                        
+                        else:
+                            print("\nERROR: Choose a valid option!")
+                            continue
                
             # TODO: how to handle htppError?                   
             except HttpError as error:

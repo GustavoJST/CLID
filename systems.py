@@ -85,7 +85,8 @@ def remove_localfile(file_dir):
         # English: ERROR: File {file_dir} doesn't exist in the system. Aborting operation...
         print(f"\nERRO: Arquivo {file_dir} não existe no sitema. Pulando operação...\n")
 
-
+# TODO: Será que existe uma maneira de printar automaticamente até o tamanho do
+# terminal, e não um valor fixo?
 def list_drive_files(search_results, GOOGLE_WORKSPACE_MIMETYPES):
     counter = 1
     print("\nOs seguintes arquivos foram encontrados: ")
@@ -105,6 +106,18 @@ def list_drive_files(search_results, GOOGLE_WORKSPACE_MIMETYPES):
         counter += 1
     print("---------------------------------------------------------------------------------------------------------------------------")
     print("AVISO: Arquivos com o tipo marcado com '*' não possuem suporte para download.")
+    
+def list_skipped_files(skipped_files, GOOGLE_WORKSPACE_MIMETYPES):
+    counter = 1
+    print("\nThe following items were skipped:")
+    print("---------------------------------------------------------------------------------------------------------------------------")
+    print(f"{'Num':^4}  | {'Tipo':^14}    |  Nome do Arquivo")
+    print("---------------------------------------------------------------------------------------------------------------------------")
+    for drive_file in skipped_files:
+        print(f"#{counter:>4} | {GOOGLE_WORKSPACE_MIMETYPES[drive_file['mimeType']]:^14} --->  {drive_file['name']}")
+        counter += 1
+    print("---------------------------------------------------------------------------------------------------------------------------")
+    print("Download the files directly from Google Drive if you need them.")   
 
 def print_file_stats(file_name=None, file_size=None, folder_mode=False, folder_stats=None):
     if folder_mode == True:
@@ -165,19 +178,21 @@ def check_download_dir(file_name, download_dir):
 def load_progress_bar(description, total_file_size=None):
     bar_format = "{desc}: {percentage:3.1f}%|{bar}| {n_fmt}B/{total_fmt}B [{elapsed}<{remaining}, {rate_fmt}]"
     return tqdm(total=int(total_file_size), desc=description, miniters=1, bar_format=bar_format, 
-                unit="B", unit_scale=True, unit_divisor=1024, dynamic_ncols=True)
+                unit="B", unit_scale=True, unit_divisor=1024, dynamic_ncols=True, leave=True)
 
 class DownloadSystem:
+    total_skipped = 0
+    skipped_files = []
     def __init__(self, progress_bar=None, unknown_folder_size=False, folder_mode=False, access_token=None):
         self.progress_bar = progress_bar
         self.unknown_folder_size = unknown_folder_size
         self.unknown_folder_size = unknown_folder_size
         self.folder_mode = folder_mode
         self.access_token = access_token
-        self.total_skipped = 0
+        """ self.total_skipped = 0
+        self.skipped_files = [] """
                  
     def get_files(self, folder_id, directory, drive):
-        from app_tqdm import prepare_directory
         search_request = drive.files().list(corpora="user", 
                                             fields="files(id, name, size, mimeType, exportLinks)", 
                                             q=f"'{folder_id}' in parents and trashed=false").execute()
@@ -212,7 +227,9 @@ class DownloadSystem:
                 request = drive.files().export_media(fileId=file_info["id"], mimeType=export_mimetype)
 
         elif file_info["mimeType"] in constants.UNSUPPORTED_MIMETYPES:
-            self.total_skipped += 1
+            DownloadSystem.total_skipped += 1
+            DownloadSystem.skipped_files.append({"name": file_info["name"], 
+                                                 "mimeType": file_info["mimeType"]})
             return
 
         # Else handles ordinary files that already have an extension in their name.
