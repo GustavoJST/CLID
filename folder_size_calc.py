@@ -4,6 +4,7 @@
 # Thanks for your project!!
 # ===============================================================================
 
+from systems import convert_filesize
 from timeit import default_timer
 from constants import UNSUPPORTED_MIMETYPES, DRIVE_EXPORT_FORMATS
 
@@ -52,9 +53,7 @@ class GoogleDriveSizeCalculate:
                 return
             elif self.timeout == True:
                 return "Timeout"
-            else:
-                # Import is here to avoid a circular import error 
-                from app_tqdm import convert_filesize
+            else:              
                 return {"Archive": name,
                         "Size": convert_filesize(self.total_bytes),
                         "Files": self.total_files,
@@ -63,7 +62,6 @@ class GoogleDriveSizeCalculate:
                         "Unsupported files (Google Forms, Sites or Maps)": self.total_unsupported_files,
                         "Bytes": self.total_bytes}
                     
-
     def list_drive_dir(self, file_id: str) -> list:
             query = f"'{file_id}' in parents and (name contains '*') and trashed=false"
             fields = "nextPageToken, files(id, mimeType, size)"
@@ -82,7 +80,6 @@ class GoogleDriveSizeCalculate:
             return response["files"]
 
     def gDrive_file(self, **kwargs):
-
         try:
             size = int(kwargs["size"])
         except:
