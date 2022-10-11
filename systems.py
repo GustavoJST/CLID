@@ -117,7 +117,19 @@ def list_skipped_files(skipped_files, GOOGLE_WORKSPACE_MIMETYPES):
         print(f"#{counter:>4} | {GOOGLE_WORKSPACE_MIMETYPES[drive_file['mimeType']]:^14} --->  {drive_file['name']}")
         counter += 1
     print("---------------------------------------------------------------------------------------------------------------------------")
-    print("Download the files directly from Google Drive if you need them.")   
+    print("Download the files directly from Google Drive if you need them.")
+    
+def list_folders(search_results):
+    counter = 1
+    print("\nThe following folders were found:")
+    print("---------------------------------------------------------------------------------------------------------------------------")
+    print(f"{'Num':^4}  |  Folder name")
+    print("---------------------------------------------------------------------------------------------------------------------------")
+    for drive_file in search_results:
+        print(f"#{counter:>4} |  {drive_file['name']}")
+        counter += 1
+    print("---------------------------------------------------------------------------------------------------------------------------")
+    print("NOTE: Listing only folders present in Google Drive's 'root' directory.")  
 
 def print_file_stats(file_name=None, file_size=None, folder_mode=False, folder_stats=None):
     if folder_mode == True:

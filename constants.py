@@ -8,7 +8,7 @@ For files smaller than 256KB, there are no restrictions. """
 # For the best efficiency, try to keep the chunk size as close to the default
 # value as possible (104857600) -> 100MB.
 CHUNK_SIZE = 104857600  # Equals to 100MB. Default Google Drive chunk size value. 
-OPTIONS = ["d", "c", "s", "e"]
+OPTIONS = ["D", "C", "S", "E"]
 
 GOOGLE_WORKSPACE_MIMETYPES = {"application/vnd.google-apps.script": "Script",
                             "application/vnd.google-apps.presentation": "Presentation",

@@ -57,13 +57,13 @@ def main():
     
     while True:
         file_created = False
-        print ("\n" "\"d\" = Download file \n" 
-                    "\"c\" = Upload file \n"
-                    "\"s\" = Calculate folder size \n"
-                    "\"e\" = Exit \n")
+        print ("\n// D = Download file \n" 
+               "// C = Upload file \n"
+               "// S = Calculate folder size \n"
+               "// E = Exit \n")
                 
-        option = input("Digite uma opção: ").lower().strip()
-        if option == "e":
+        option = input("Digite uma opção: ").upper().strip()
+        if option == "E":
             break
         
         print("=================================================================================================")
@@ -74,7 +74,7 @@ def main():
             print("=================================================================================================")
             continue
 
-        if option == "d":  
+        if option == "D":  
             try:
                 while True:
                     search_completed = False
@@ -90,7 +90,6 @@ def main():
                                                             fields="files(id, name, size, mimeType, exportLinks)", 
                                                             q="'root' in parents and trashed=false", 
                                                             orderBy="folder,name").execute()
-                        #search_results = search_request.get("files", [])
                         search_results = search_request["files"]
 
                     elif search_query == "A":
@@ -251,7 +250,7 @@ def main():
                 print(f"An error occurred: {error}")
                 return
                  
-        if option == "c":
+        if option == "C":
             # Copying file paths from Windows sometimes adds a invisible
             # character "u+202a". Strip("\u202a") removes it from the beggining of the
             # file_dir string path.
@@ -344,6 +343,44 @@ def main():
                 file_created = False
 
             print("Operação concluída!")
+            
+        if option == "S":
+            query = "'root' in parents and trashed=false and mimeType='application/vnd.google-apps.folder'"
+            search_request = drive.files().list(corpora="user", 
+                                                fields="files(id, name)", 
+                                                q=query, 
+                                                orderBy="name").execute()
+            search_results = search_request["files"]
+            systems.list_folders(search_results)
+            
+            while True:    
+                folder_number = input("\nSelect a folder number to calculate it's size, or...\n"
+                                    "// A = Abort operation\n\n"
+                                    "=> ").strip().upper()
+    
+                if folder_number == "A":
+                    os.system('cls' if os.name == 'nt' else 'clear')
+                    break
+                try:
+                    folder_info = search_results[int(folder_number) - 1]                     
+                    break
+                except (IndexError, ValueError):
+                    print("\nERROR: Type a valid value!")
+                    continue
+                
+            if folder_number == "A":
+                continue     
+            else:
+                print("\nCalculating folder size. This can take a while...\n")
+                bar_format = "{desc}: {n_fmt} Files Found [{elapsed}, {rate_fmt}{postfix}]"
+                with systems.tqdm(desc="Calculating size", dynamic_ncols=True, 
+                                  unit="Files", bar_format=bar_format, initial=1) as progress_bar:
+                    folder_stats = GoogleDriveSizeCalculate(drive, progress_bar).gdrive_checker(folder_info["id"])
+  
+                print()
+                systems.print_file_stats(folder_stats=folder_stats, folder_mode=True)
+                print("Operation completed!\n")
+                input("Press any key to continue")                      
         print("=================================================================================================")
 
     drive.close() 

@@ -1,5 +1,5 @@
 # ===============================================================================
-# Slightly modified code from XtremeRahul"s gdrive_folder_size project
+# Modified code from XtremeRahul's gdrive_folder_size project
 # Check => https://github.com/XtremeRahul/gdrive_folder_size
 # Thanks for your project!!
 # ===============================================================================
@@ -9,7 +9,7 @@ from timeit import default_timer
 from constants import UNSUPPORTED_MIMETYPES, DRIVE_EXPORT_FORMATS
 
 class GoogleDriveSizeCalculate:
-    def __init__(self, service):
+    def __init__(self, service=None, progress_bar=None):
         self.__G_DRIVE_DIR_MIME_TYPE = "application/vnd.google-apps.folder"
         self.__service = service
         self.total_bytes = 0
@@ -19,7 +19,8 @@ class GoogleDriveSizeCalculate:
         self.google_workspace_files = 0
         self.start = default_timer()
         self.timeout = False
-
+        self.progress_bar = progress_bar
+       
     def gdrive_checker(self, file_id):              
         error = False
         try:
@@ -32,7 +33,6 @@ class GoogleDriveSizeCalculate:
             else:
                 self.total_files += 1
                 self.gDrive_file(**drive_file)
-
         except Exception as e:
             print("\n")
             if "HttpError" in str(e):
@@ -64,10 +64,9 @@ class GoogleDriveSizeCalculate:
                     
     def list_drive_dir(self, file_id: str) -> list:
             query = f"'{file_id}' in parents and (name contains '*') and trashed=false"
-            fields = "nextPageToken, files(id, mimeType, size)"
+            fields = "nextPageToken, files(name, id, mimeType, size)"
             page_token = None
-            page_size = 1000
-           
+            page_size = 1000      
             while True:
                 response = self.__service.files().list(q=query, pageToken=page_token,
                                                     fields=fields, corpora="user",
@@ -87,14 +86,19 @@ class GoogleDriveSizeCalculate:
         self.total_bytes += size
 
     def gDrive_directory(self, **kwargs) -> None:
-        elapsed_time = default_timer() - self.start
-        if elapsed_time >= 10:
-            self.timeout = True
-            return
+        if self.progress_bar is None:
+            elapsed_time = default_timer() - self.start
+            if elapsed_time >= 10:
+                self.timeout = True
+                return
         files = self.list_drive_dir(kwargs["id"])    
         if len(files) == 0:
             return
         for file_ in files:
+            if self.progress_bar is not None:
+                self.progress_bar.set_postfix({"Current file": file_["name"]}, refresh=True)
+                self.progress_bar.update(1)
+                
             if file_["mimeType"] == self.__G_DRIVE_DIR_MIME_TYPE: 
                 self.total_folders += 1
                 self.gDrive_directory(**file_)
