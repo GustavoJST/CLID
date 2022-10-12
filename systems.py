@@ -189,12 +189,17 @@ def check_download_dir(file_name, download_dir):
 def load_progress_bar(description, total_file_size=None, folder_mode=False):
     if folder_mode == False:
         bar_format = "{desc}: {percentage:3.1f}%|{bar}| {n_fmt}B/{total_fmt}B [{elapsed}<{remaining}, {rate_fmt}]"
+    elif folder_mode == True and total_file_size is None:
+        bar_format = "{desc}: {n_fmt}B/Unknown [{elapsed}, {rate_fmt}]{postfix:<70}"    
     else:
-        bar_format = "{desc}: {percentage:3.1f}%|{bar}| {n_fmt}B/{total_fmt}B [{elapsed}<{remaining}, {rate_fmt}]{postfix:<70}"
-        # TODO: Total == None retorna exception por causa do cast int()
-    return tqdm(total=int(total_file_size), desc=description, miniters=1, bar_format=bar_format, 
-                unit="B", unit_scale=True, unit_divisor=1024, dynamic_ncols=True, leave=True)
-
+       bar_format = "{desc}: {percentage:3.1f}%|{bar}| {n_fmt}B/{total_fmt}B [{elapsed}<{remaining}, {rate_fmt}]{postfix:<70}"
+        
+    if total_file_size is None:
+        return tqdm(desc=description, miniters=1, bar_format=bar_format, 
+                    unit="B", unit_scale=True, unit_divisor=1024, dynamic_ncols=True)
+    else:   
+        return tqdm(total=int(total_file_size), desc=description, miniters=1, bar_format=bar_format, 
+                    unit="B", unit_scale=True, unit_divisor=1024, dynamic_ncols=True)
 class DownloadSystem:
     total_skipped = 0
     skipped_files = []
@@ -204,8 +209,6 @@ class DownloadSystem:
         self.unknown_folder_size = unknown_folder_size
         self.folder_mode = folder_mode
         self.access_token = access_token
-        """ self.total_skipped = 0
-        self.skipped_files = [] """
                  
     def get_files(self, folder_id, directory, drive):
         search_request = drive.files().list(corpora="user", 
@@ -258,20 +261,23 @@ class DownloadSystem:
         done = False
         while done == False:
             status, done = downloader.next_chunk()
-            if self.folder_mode == True:                        
+            if self.folder_mode == True and self.progress_bar.total is not None:                        
                 """ Folder size is calculated based on the size of the files inside
                 the folder, but when exporting files to a different format, they
                 can increase or decrease in size (depending on the format).
                 Because of this change, the progress bar can surpass the maximum
                 size value, or not reach it. The code below fix this behavior. """
-                chunk = self.progress_bar.n + (status.resumable_progress - self.progress_bar.n)
+                chunk = status.resumable_progress
                 if (chunk + self.progress_bar.n) >= self.progress_bar.total:
                     self.progress_bar.n = self.progress_bar.total
                     self.progress_bar.refresh() 
                 
                 else:    
-                    #progress_bar.update(Path(file_path).stat().st_size)
                     self.progress_bar.update(chunk)                   
+            
+            elif self.folder_mode == True and self.progress_bar.total is None:
+                self.progress_bar.update(status.resumable_progress)
+            
             else:
                 self.progress_bar.n = status.resumable_progress
                 self.progress_bar.refresh()
@@ -305,7 +311,6 @@ class DownloadSystem:
 
             try:
                 format_info = next(formats for formats in export_formats if choosed_format == formats["format"].upper())
-            
                 break
             except StopIteration:
                 os.system('cls' if os.name == 'nt' else 'clear')
@@ -342,7 +347,7 @@ class DownloadSystem:
         download_url = file_info["exportLinks"][format_mimetype] 
         header={'Authorization': 'Bearer ' + self.access_token}
         if self.folder_mode == False:
-            print(Fore.YELLOW + "WARNING" + Style.RESET_ALL + ": File is too big to use the export method.")
+            print("\n" + Fore.YELLOW + "WARNING" + Style.RESET_ALL + ": File is too big to use the export method.")
             print("Trying a direct download through HTTP GET request. This can take a while...")
         
         request = requests.get(download_url, headers=header, stream=True)
@@ -360,12 +365,16 @@ class DownloadSystem:
                     progress_bar.refresh()
                     
                 else:
-                    if (self.progress_bar.n + len(chunk)) > self.progress_bar.total:
-                        self.progress_bar.n = self.progress_bar.total
-                        self.progress_bar.refresh() 
-                        
-                    else:    
+                    if self.progress_bar.total is not None:
+                        if (self.progress_bar.n + len(chunk)) > self.progress_bar.total:
+                            self.progress_bar.n = self.progress_bar.total
+                            self.progress_bar.refresh() 
+                            
+                        else:    
+                            self.progress_bar.update(len(chunk))
+                    else:
                         self.progress_bar.update(len(chunk))
+                        
         if self.folder_mode == False:
             progress_bar.close()
         file.close()

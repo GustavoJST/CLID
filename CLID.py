@@ -69,6 +69,8 @@ def main():
     
     while True:
         terminal_size = os.get_terminal_size().columns - 1
+        DownloadSystem.total_skipped = 0
+        DownloadSystem.skipped_files = []
         print ("\n// D = Download file \n" 
                "// C = Upload file \n"
                "// S = Calculate folder size \n"
@@ -91,8 +93,6 @@ def main():
                     print("\nType the name of the file/folder you want to download (with it's extension) or type:")
                     print("//  list = lists all files/folders present in your Google Drive")
                     print("//     A = Abort operation")
-                    print(Fore.YELLOW + "WARNING" + Style.RESET_ALL + 
-                          ": Only files/folder inside the Drive's root folder will be exhibited.")
                     search_query = input("=> ").strip().upper()
 
                     if search_query == "LIST":
@@ -114,7 +114,7 @@ def main():
 
                     if len(search_results) == 0:
                         os.system('cls' if os.name == 'nt' else 'clear')
-                        print(Fore.RED + "ERROR" + Style.RESET_ALL + ": Nenhum arquivo com o nome especificado foi encontrado.")
+                        print(Fore.RED + "ERROR" + Style.RESET_ALL + ": No file with the specified name was found.")
                         continue
                         
                     systems.list_drive_files(search_results, constants.GOOGLE_WORKSPACE_MIMETYPES)
@@ -122,9 +122,9 @@ def main():
                     if len(search_results) > 1:
                         while search_completed != True:
                             try:
-                                file_number = input("\nSelecione o número do arquivo para download, ou..."
-                                                        "\n// A = Abortar ação\n \n"
-                                                        "=> ").strip().upper()
+                                print("\nSpecify the file number to download, or...")
+                                print("// A = Abort operation.")
+                                file_number = input("=> ").strip().upper()
                                 if file_number == "A":
                                     os.system('cls' if os.name == 'nt' else 'clear')
                                     break
@@ -139,8 +139,8 @@ def main():
                     elif len(search_results) == 1:
                         choice = None
                         while search_completed != True:
-                            choice = input("\nProsseguir para o download do arquivo encontrado? (Y/N)\n"
-                                    "=> ").upper().strip()
+                            print("\nOnly one file found. Continue the download process? (Y/N)")
+                            choice = input("=> ").upper().strip()
                             if choice not in ["Y", "N"]:
                                 os.system('cls' if os.name == 'nt' else 'clear')
                                 print("\n" + Fore.RED + "ERROR" + Style.RESET_ALL + f": {choice} is not a valid choice.")
@@ -222,7 +222,7 @@ def main():
                 elif file_info["mimeType"] in constants.NO_SIZE_TYPES:
                     os.system('cls' if os.name == 'nt' else 'clear')
                     print("\n" + Fore.RED + "ERROR" + Style.RESET_ALL + f": File '{file_info['name']}', of type " 
-                        f"{constants.GOOGLE_WORKSPACE_MIMETYPES[file_info['mimeType']].strip('*')}, isn't supported for download.")  
+                        f"'{constants.GOOGLE_WORKSPACE_MIMETYPES[file_info['mimeType']].strip('*')}', isn't supported for download.")  
                     print("Aborting Operation...")
                     sleep(1)
                     continue
@@ -292,7 +292,7 @@ def main():
             systems.print_file_stats(local_filename, file_size)
 
             try:
-                # TODO: talvez usar um next page token?
+                # TODO: talvez usar um next page token? Pegar exemplo do folder_size_calc
                 results = drive.files().list(fields="files(id, name)",
                     pageSize=1000, 
                     q=f"name = '{local_filename}' and trashed=false").execute()
@@ -379,14 +379,12 @@ def main():
                 continue     
             else:
                 print("\nCalculating folder size. This can take a while...\n")
-                bar_format = "{desc}: {n_fmt} Files Found [{elapsed}, {rate_fmt}{postfix}]"
+                bar_format = "{desc}: {n_fmt} Files Found [{elapsed},{rate_fmt}{postfix}]"
                 with systems.tqdm(desc="Calculating size", dynamic_ncols=True, 
                                   unit="Files", bar_format=bar_format, initial=1) as progress_bar:
                     folder_stats = GoogleDriveSizeCalculate(drive, progress_bar).gdrive_checker(folder_info["id"])
                 print()
-                systems.print_file_stats(folder_stats=folder_stats, folder_mode=True)
-                
-            input("Operation completed! Press any key to continue")                     
+                systems.print_file_stats(folder_stats=folder_stats, folder_mode=True)                                    
         print("=" * terminal_size)
     drive.close() 
          
