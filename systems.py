@@ -170,7 +170,7 @@ def check_download_dir(file_name, download_dir):
                 print("\n" + Fore.YELLOW + "WARNING" + Style.RESET_ALL + 
                       f": File '{file_name}' is already present in '{download_dir}'.")
                 print("// S = Replace file.")
-                print("// C = Download as copy.\n")
+                print("// C = Download as copy.")
                 choice = input("=> ").strip().upper()
 
                 if choice != "S" and choice != "C":
@@ -211,10 +211,14 @@ class DownloadSystem:
         self.access_token = access_token
                  
     def get_files(self, folder_id, directory, drive):
-        search_request = drive.files().list(corpora="user", 
-                                            fields="files(id, name, size, mimeType, exportLinks)", 
-                                            q=f"'{folder_id}' in parents and trashed=false").execute()
-              
+        page_token = None
+        while True:
+            search_request = drive.files().list(corpora="user", pageToken=page_token, pageSize = 1000, 
+                                                fields="nextPageToken, files(id, name, size, mimeType, exportLinks)", 
+                                                q=f"'{folder_id}' in parents and trashed=false").execute()
+            page_token = search_request.get("nextPageToken", None)
+            if page_token is None:
+                break
         for file in search_request["files"]:
             if file["mimeType"] == "application/vnd.google-apps.folder":
                 # Precisa adicionar self nas chamadas ou apenas na definição?
@@ -355,7 +359,7 @@ class DownloadSystem:
         total_transfered = 0
         if self.folder_mode == False:
             progress_bar = load_progress_bar("Downloading", file_size)
-        for chunk in request.iter_content(chunk_size=constants.CHUNK_SIZE):
+        for chunk in request.iter_content(chunk_size=8192):
             if chunk:
                 file.write(chunk)
                 total_transfered += len(chunk)

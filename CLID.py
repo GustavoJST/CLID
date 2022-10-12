@@ -96,22 +96,31 @@ def main():
                     search_query = input("=> ").strip().upper()
 
                     if search_query == "LIST":
-                        search_request = drive.files().list(corpora="user", 
-                                                            fields="files(id, name, size, mimeType, exportLinks)", 
-                                                            q="'root' in parents and trashed=false", 
-                                                            orderBy="folder,name").execute()
-                        search_results = search_request["files"]
-
+                        page_token = None
+                        while True:
+                            search_request = drive.files().list(corpora="user", pageSize=1000, pageToken=page_token,
+                                                                fields="files(id, name, size, mimeType, exportLinks)", 
+                                                                q="'root' in parents and trashed=false", 
+                                                                orderBy="folder,name").execute()
+                            search_results = search_request["files"]
+                            page_token = search_request.get("nextPageToken", None)
+                            if page_token is None:
+                                break
                     elif search_query == "A":
                         break   
 
                     else:
-                        search_request = drive.files().list(corpora="user", 
-                                                            fields="files(id, name, size, mimeType, exportLinks)", 
-                                                            q=f"name contains '{search_query}' and trashed=false", 
-                                                            orderBy="folder,name").execute()
-                        search_results = search_request["files"]
-
+                        page_token = None
+                        while True:
+                            search_request = drive.files().list(corpora="user", pageSize= 1000, pageToken=page_token,
+                                                                fields="nextPageToken, files(id, name, size, mimeType, exportLinks)", 
+                                                                q=f"name contains '{search_query}' and trashed=false", 
+                                                                orderBy="folder,name").execute()
+                            search_results = search_request["files"]
+                            page_token = search_request.get("nextPageToken", None)
+                            if page_token is None:
+                                break
+                            
                     if len(search_results) == 0:
                         os.system('cls' if os.name == 'nt' else 'clear')
                         print(Fore.RED + "ERROR" + Style.RESET_ALL + ": No file with the specified name was found.")
@@ -189,7 +198,6 @@ def main():
                     folder_stats = GoogleDriveSizeCalculate(drive).gdrive_checker(file_info["id"])
                     
                     if folder_stats == "Timeout":
-                        # TODO: Mudar progress bar aqui pq o tamanho da pasta é desconhecido 
                         print("\n" + Fore.YELLOW + "WARNING" + Style.RESET_ALL + 
                               ": Operation took longer than expected. Skipping to download...")
                         sleep(0.5)
@@ -292,13 +300,17 @@ def main():
             systems.print_file_stats(local_filename, file_size)
 
             try:
-                # TODO: talvez usar um next page token? Pegar exemplo do folder_size_calc
-                results = drive.files().list(fields="files(id, name)",
-                    pageSize=1000, 
-                    q=f"name = '{local_filename}' and trashed=false").execute()
-
+                page_token = None
+                while True:
+                    results = drive.files().list(fields="nextPageToken, files(id, name)", 
+                                                 pageSize=1000, 
+                                                 pageToken=page_token, 
+                                                 q=f"name = '{local_filename}' and trashed=false and 'root' in parents").execute()
+                    page_token = results.get("nextPageToken", None)
+                    if page_token is None:
+                        break
                 try:
-                    items = results.get("files", [])
+                    items = results["files"]
                     drive_file = next(file for file in items if file["name"] == local_filename)
                     drive_filename = drive_file["name"]
                     file_id = drive_file["id"]
@@ -354,10 +366,17 @@ def main():
             
         if option == "S":
             query = "'root' in parents and trashed=false and mimeType='application/vnd.google-apps.folder'"
-            search_request = drive.files().list(corpora="user", 
-                                                fields="files(id, name)", 
-                                                q=query, 
-                                                orderBy="name").execute()
+            page_token = None
+            while True:
+                search_request = drive.files().list(corpora="user", 
+                                                    pageSize= 1000, 
+                                                    pageToken=page_token, 
+                                                    fields="files(id, name)", 
+                                                    q=query, 
+                                                    orderBy="name").execute()
+                page_token = search_request.get("nextPageToken", None)
+                if page_token is None:
+                    break
             search_results = search_request["files"]
             systems.list_folders(search_results)    
             while True:    
