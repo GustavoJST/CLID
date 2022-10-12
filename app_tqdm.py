@@ -39,7 +39,7 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaFileUpload
 from colorama import init
-from colorama import Back, Style
+from colorama import Fore, Style
 
 # If modifying these scopes, delete the file token.json.
 SCOPES = ["https://www.googleapis.com/auth/drive"]
@@ -62,7 +62,7 @@ def main():
         with open("token.json", "w") as token:
             token.write(creds.to_json())
     access_token = creds.token
-    init()
+    init()  # Colorama init
     
     # Builds the google drive service instance.
     drive = build("drive", "v3", credentials=creds)
@@ -74,28 +74,26 @@ def main():
                "// S = Calculate folder size \n"
                "// E = Exit \n")
                 
-        option = input("Digite uma opção: ").upper().strip()
+        option = input("Choose an option: ").upper().strip()
         if option == "E":
             break
         
-        print("=" * terminal_size)
         if option not in constants.OPTIONS:
             os.system('cls' if os.name == 'nt' else 'clear')
-            print("=" * terminal_size)
-            print(Back.RED + "ERROR" + Style.RESET_ALL + ": Select a valid option from the menu below.")
-            print("=" * terminal_size)
+            print(Fore.RED + "ERROR" + Style.RESET_ALL + ": Select a valid option from the menu below.")
             continue
-
+        
+        print("=" * terminal_size)
         if option == "D":  
             try:
                 while True:
                     search_completed = False
-                    # English: Type the name of the file you want to download, with it's extension:
-                    search_query = input("\nDigite o nome do arquivo que você quer baixar (junto com sua extensão), ou digite:\n"
-                                        "//  list = Listar os arquivos presentes em seu Google Drive\n"
-                                        "//     A = Abortar ação\n \n"
-                                        "AVISO: Apenas arquivos na pasta root (e fora da lixeira) do Google Drive serão exibidos.\n"
-                                        "=> ").strip().upper()
+                    print("\nType the name of the file/folder you want to download (with it's extension) or type:")
+                    print("//  list = lists all files/folders present in your Google Drive")
+                    print("//     A = Abort operation")
+                    print(Fore.YELLOW + "WARNING" + Style.RESET_ALL + 
+                          ": Only files/folder inside the Drive's root folder will be exhibited.")
+                    search_query = input("=> ").strip().upper()
 
                     if search_query == "LIST":
                         search_request = drive.files().list(corpora="user", 
@@ -116,7 +114,7 @@ def main():
 
                     if len(search_results) == 0:
                         os.system('cls' if os.name == 'nt' else 'clear')
-                        print("ERRO: Nenhum arquivo com o nome especificado foi encontrado.")
+                        print(Fore.RED + "ERROR" + Style.RESET_ALL + ": Nenhum arquivo com o nome especificado foi encontrado.")
                         continue
                         
                     systems.list_drive_files(search_results, constants.GOOGLE_WORKSPACE_MIMETYPES)
@@ -136,7 +134,7 @@ def main():
                                 search_completed = True
                                 break
                             except (IndexError, ValueError):
-                                print("\nERRO: Digite um valor válido!")
+                                print("\n" + Fore.RED + "ERROR" + Style.RESET_ALL + ": Invalid value or out of range.")
                         
                     elif len(search_results) == 1:
                         choice = None
@@ -145,7 +143,7 @@ def main():
                                     "=> ").upper().strip()
                             if choice not in ["Y", "N"]:
                                 os.system('cls' if os.name == 'nt' else 'clear')
-                                print("\nERRO: Digite apenas Y ou N")
+                                print("\n" + Fore.RED + "ERROR" + Style.RESET_ALL + f": {choice} is not a valid choice.")
                                 systems.list_drive_files(search_results, constants.GOOGLE_WORKSPACE_MIMETYPES)
                                 continue
                             elif choice == "Y":
@@ -166,8 +164,8 @@ def main():
                     continue
 
                 while True:
-                    print("\nDigite o diretório onde o arquivo será baixado\n"
-                        "ou aperte enter para escolher o diretório padrão ([CLID_folder]/downloads)\n")
+                    print("\nSpecify the directory (ABSOLUTE PATH) where the file will be downloaded")
+                    print("or press enter to choose the default download directory ([CLID_folder]/downloads)")
                     download_dir = Path(input(r"=> ").strip("\u202a").strip())
 
                     if download_dir == WindowsPath("."):
@@ -175,12 +173,11 @@ def main():
                             Path("downloads").mkdir()
                         download_dir = Path("downloads")
                         break
-
                     else:
                         if not download_dir.exists():
                             os.system('cls' if os.name == 'nt' else 'clear')
-                            print(f"ERRO: Não foi possivel encontrar o caminho '{download_dir}'. "
-                                "Especifique um caminho ABSOLUTO ou aperte ENTER.\n")
+                            print(Fore.RED + "ERROR" + Style.RESET_ALL + f": Unable to find specified path '{download_dir}'.")
+                            print("Input only an ABSOLUTE path or press ENTER.")   
                             continue
                         else:
                             break
@@ -188,23 +185,25 @@ def main():
                 if file_info["mimeType"] == "application/vnd.google-apps.folder":
                     file_info["name"] = systems.check_download_dir(file_info["name"], download_dir)
                     directory = systems.prepare_directory(download_dir, file_info["name"])
-                    print("\nCalculando tamanho da pasta...\n")
+                    print("\nCalculating folder size...", end="")
                     folder_stats = GoogleDriveSizeCalculate(drive).gdrive_checker(file_info["id"])
                     
                     if folder_stats == "Timeout":
                         # TODO: Mudar progress bar aqui pq o tamanho da pasta é desconhecido 
-                        print("\nWARNING: Operação durou mais que o esperado. Continuando para download...")
+                        print("\n" + Fore.YELLOW + "WARNING" + Style.RESET_ALL + 
+                              ": Operation took longer than expected. Skipping to download...")
                         sleep(0.5)
-                        progress_bar = systems.load_progress_bar(description="Fazendo download", folder_mode=True)
+                        progress_bar = systems.load_progress_bar(description="Downloading", folder_mode=True)
                         folder_downloader = DownloadSystem(access_token=access_token, 
                                                            progress_bar=progress_bar, 
                                                            unknown_folder_size=True, 
                                                            folder_mode=True)                   
                     else:
+                        print(Fore.GREEN + "Done!" + Style.RESET_ALL)
                         folder_stats["Archive"] = file_info["name"]
                         print("\nTo be downloaded:") 
                         systems.print_file_stats(folder_stats=folder_stats, folder_mode=True)
-                        progress_bar = systems.load_progress_bar("Fazendo Download", folder_stats["Bytes"], folder_mode=True)
+                        progress_bar = systems.load_progress_bar("Downloading", folder_stats["Bytes"], folder_mode=True)
                         folder_downloader = DownloadSystem(access_token=access_token, 
                                                            progress_bar=progress_bar, 
                                                            folder_mode=True)
@@ -222,9 +221,9 @@ def main():
                 # unsuported type (Google Form, Maps or Site)
                 elif file_info["mimeType"] in constants.NO_SIZE_TYPES:
                     os.system('cls' if os.name == 'nt' else 'clear')
-                    print(f"\nERRO: O arquivo '{file_info['name']}', do tipo " 
-                        f"{constants.GOOGLE_WORKSPACE_MIMETYPES[file_info['mimeType']].strip('*')}, não possui suporte para download. "  
-                        "Cancelando Operação...")
+                    print("\n" + Fore.RED + "ERROR" + Style.RESET_ALL + f": File '{file_info['name']}', of type " 
+                        f"{constants.GOOGLE_WORKSPACE_MIMETYPES[file_info['mimeType']].strip('*')}, isn't supported for download.")  
+                    print("Aborting Operation...")
                     sleep(1)
                     continue
                 
@@ -238,7 +237,7 @@ def main():
                     file_downloader.download_file(drive, download_dir, file_info)
                     progress_bar.close()
                                    
-                print("\nDownload concluído com sucesso!")
+                print("\nDownload completed successfully!")
                 if DownloadSystem.total_skipped > 0:
                     while True:
                         print(f"\n{DownloadSystem.total_skipped} file(s) were skipped during download")
@@ -254,7 +253,7 @@ def main():
                             break
                         
                         else:
-                            print("\nERROR: Choose a valid option!")
+                            print("\n" + Fore.RED + "ERROR" + Style.RESET_ALL + ": Choose a valid option!")
                             continue
                
             # TODO: how to handle htppError?                   
@@ -267,12 +266,9 @@ def main():
             # Copying file paths from Windows sometimes adds a invisible
             # character "u+202a". Strip("\u202a") removes it from the beggining of the
             # file_dir string path.
-            #
-            # English: Type the absolute path of the file you want to upload.
-            # NOTE: If the file is a directory (folder), it will be zipped before uploading.
-            file_dir = Path(input("Digite o caminho absoluto do arquivo a ser upado:"
-                        "\nAVISO: Se o arquivo for um diretório (pasta), ele será upado em formato .zip\n"
-                        "=> ").strip("\u202a").strip()) 
+            print("Specify the absolute path of the file to be uploaded")
+            print(Fore.YELLOW + "WARNING" + Style.RESET_ALL + ": If the file is a directory, it will be zipped before uploading")
+            file_dir = Path(input("=> ").strip("\u202a").strip())
 
             if file_dir.exists():
                 if file_dir.is_dir():
@@ -288,9 +284,7 @@ def main():
                     file_metadata = {"name" : local_filename}
             else:
                 os.system('cls' if os.name == 'nt' else 'clear')
-                print("=" * terminal_size)
-                print("ERROR: File path doesn't exist.")
-                print("=" * terminal_size)
+                print(Fore.RED + "ERROR" + Style.RESET_ALL + f": File path '{file_dir}' doesn't exist.")
                 continue
             
             file_size = file_dir.stat().st_size 
@@ -298,6 +292,7 @@ def main():
             systems.print_file_stats(local_filename, file_size)
 
             try:
+                # TODO: talvez usar um next page token?
                 results = drive.files().list(fields="files(id, name)",
                     pageSize=1000, 
                     q=f"name = '{local_filename}' and trashed=false").execute()
@@ -316,7 +311,8 @@ def main():
                 # skip user prompt.
                 if len(items) > 1 and drive_filename == local_filename:
                     request = systems.create_gdrive_copy(file_metadata, drive, drive_filename, file)
-                    print(f"AVISO: Múltiplos arquivos com o mesmo nome. O Arquivo será upado como \"{file_metadata['name']}\".\n")
+                    print(Fore.YELLOW + "WARNING" + Style.RESET_ALL + 
+                          f": Multiple files with the same name. File will be uploaded as \"{file_metadata['name']}\".\n")
                     sleep(1)
 
                 # In case there's only one file with the exact same name
@@ -324,14 +320,15 @@ def main():
                 elif len(items) > 0 and drive_filename == local_filename:
                     upload_choice = None
                     while upload_choice not in ["Y", "C", "A"]:
-                        upload_choice = input("AVISO: O arquivo já existe no Google Drive! Pressione:\n"
-                                            "// Y = Atualizar o arquivo\n" 
-                                            "// C = Manter os dois arquivos (Arquivo terá \"cópia de ...\" junto ao nome)\n"
-                                            "// A = Abortar ação\n"
-                                            "=> ").upper().strip()
+                        print(Fore.YELLOW + "WARNING" + Style.RESET_ALL + ": File already existis in Google Drive. Press:")
+                        print("// Y = Replace file")
+                        print(f"// C = Keep both files (File will renamed to \"Copy of {file_metadata['name']}\"")
+                        print("// A = Abort operation")
+                        upload_choice = input("=> ").upper().strip()
 
                         if upload_choice not in ["Y", "C", "A"]:
-                            print("\nERRO: Selecione uma opção válida.\n") 
+                            print("\n" + Fore.RED + "ERROR" + Style.RESET_ALL + 
+                                  f": {upload_choice} is not a valid choice.\n")
                         elif upload_choice == "Y":
                             request = drive.files().update(fileId=file_id, body=file_metadata, media_body=file)  
                             break
@@ -343,6 +340,7 @@ def main():
                         continue
             
                 systems.upload_file(file_size, request)
+                print("\nUpload Completed Successfully!")
                 
             except HttpError as error:
                 # TODO(developer) - Handle errors from drive API.
@@ -353,8 +351,6 @@ def main():
             if file_created == True:
                 systems.remove_localfile(file_dir)
                 file_created = False
-
-            print("Operação concluída!")
             
         if option == "S":
             query = "'root' in parents and trashed=false and mimeType='application/vnd.google-apps.folder'"
@@ -389,8 +385,8 @@ def main():
                     folder_stats = GoogleDriveSizeCalculate(drive, progress_bar).gdrive_checker(folder_info["id"])
                 print()
                 systems.print_file_stats(folder_stats=folder_stats, folder_mode=True)
-                print("Operation completed!\n")
-                input("Press any key to continue")                     
+                
+            input("Operation completed! Press any key to continue")                     
         print("=" * terminal_size)
     drive.close() 
          

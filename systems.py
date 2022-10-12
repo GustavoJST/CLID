@@ -9,26 +9,26 @@ from tqdm import tqdm
 from pathlib import Path
 from googleapiclient.http import MediaIoBaseDownload
 from time import sleep
+from colorama import init
+from colorama import Fore, Style
+init()
 
 def compact_directory(file_dir): 
-    # English: "File identified as a directory. Starting compaction..."
-    print("\n=> Arquivo identificado como diretório. Iniciando compactação...")
-    sleep(1)
+    print("\nFile identified as a directory. Starting compression process...", end="")
+    sleep(0.5)
     target_path = Path(f"{file_dir}.zip")
     local_filename = target_path.name
-    
+     
     total_files = 0
     for file in file_dir.rglob("*"):
-        total_files += 1         
-    
+        total_files += 1
+    print(Fore.GREEN + "Done!" + Style.RESET_ALL)
+               
     with ZipFile(target_path, "w", zipfile.ZIP_DEFLATED) as zfile:
-        for files in tqdm(file_dir.rglob("*"), total=total_files, desc="Compactando ", dynamic_ncols=True, unit="Files"):
+        for files in tqdm(file_dir.rglob("*"), total=total_files, desc="Compressing", dynamic_ncols=True, unit="Files"):
             zfile.write(files, files.relative_to(file_dir)) 
-
-    file_metadata = {
-        "name" : local_filename,
-        "mimetype" : "application/zip"
-                }
+    file_metadata = {"name" : local_filename, 
+                     "mimetype" : "application/zip"}
     file_created = True
     return target_path, local_filename, file_metadata, file_created
 
@@ -45,14 +45,15 @@ def convert_filesize(size_bytes):
     return f"{size_converted} {size_unit[i]}"
 
 def create_gdrive_copy(file_metadata, drive, drive_filename, file):
-    file_metadata["name"] = f"Cópia de {drive_filename}"
+    file_metadata["name"] = f"Copy of {drive_filename}"
     request = drive.files().create(body=file_metadata, media_body=file)
     return request
 
 def upload_file(file_size, request):
-    print("\nIniciando upload... (Aperte Ctrl+C para abortar)")
+    print("\nStarting upload...", end="")
     sleep(1)
-    progress_bar = load_progress_bar("Fazendo upload", file_size) 
+    print(Fore.GREEN + "Done!" + Style.RESET_ALL)
+    progress_bar = load_progress_bar("Uploading", file_size) 
     response = None
     while response is None:
         status, response = request.next_chunk()
@@ -69,30 +70,23 @@ def upload_file(file_size, request):
             progress_bar.n = file_size
             progress_bar.refresh() 
     progress_bar.close()
-    # English: Upload completed successfully!
-    print("\nUpload concluído com sucesso!")
-
 
 def remove_localfile(file_dir):
     if file_dir.exists:
-        # English: Removing the created .zip file form the system...
-        print("\nRemovendo arquivo ZIP do sistema...")
+        print("\nRemoving created ZIP file from system...", end="")
         sleep(1)
         file_dir.unlink()
-        # English: Local .zip file removed successfully!
-        print("\nRemoção do arquivo local concluido!")
+        print(Fore.GREEN + "Done!" + Style.RESET_ALL)
     else:
-        # English: ERROR: File {file_dir} doesn't exist in the system. Aborting operation...
-        print(f"\nERRO: Arquivo {file_dir} não existe no sitema. Pulando operação...\n")
+        print(f"\n" + Fore.RED + "ERROR" + Style.RESET_ALL + 
+              f": File path '{file_dir}' doesn't exist. Skipping operation...\n")
 
-# TODO: Será que existe uma maneira de printar automaticamente até o tamanho do
-# terminal, e não um valor fixo?
 def list_drive_files(search_results, GOOGLE_WORKSPACE_MIMETYPES):
     terminal_size = os.get_terminal_size().columns - 1
     counter = 1
-    print("\nOs seguintes arquivos foram encontrados: ")
+    print("\nThe following files were found:")
     print("-" * terminal_size)
-    print(f"{'Num':^4}  | {'Tipo':^14} | {'Tamanho':^11}    |   Nome do Arquivo")
+    print(f"{'Num':^4}  | {'Type':^14} | {'Size':^11}    |   File name")
     print("-" * terminal_size)
     for drive_file in search_results:
 
@@ -106,7 +100,8 @@ def list_drive_files(search_results, GOOGLE_WORKSPACE_MIMETYPES):
             print(f"#{counter:>4} | {'File':^14} | {convert_filesize(drive_file['size']):^11} --->   {drive_file['name']}")
         counter += 1
     print("-" * terminal_size)
-    print("AVISO: Arquivos com o tipo marcado com '*' não possuem suporte para download.")
+    print(Fore.YELLOW + "WARNING" + Style.RESET_ALL +
+          ": Files tagged with '*' are not supported for download.")
     
 def list_skipped_files(skipped_files, GOOGLE_WORKSPACE_MIMETYPES):
     terminal_size = os.get_terminal_size().columns - 1
@@ -132,7 +127,8 @@ def list_folders(search_results):
         print(f"#{counter:>4} |  {drive_file['name']}")
         counter += 1
     print("-" * terminal_size)
-    print("NOTE: Listing only folders present in Google Drive's 'root' directory.")
+    print(Fore.YELLOW + "WARNING" + Style.RESET_ALL +
+          ": Listing only folders present in Google Drive's 'root' directory.")
 
 def print_file_stats(file_name=None, file_size=None, folder_mode=False, folder_stats=None):
     terminal_size = os.get_terminal_size().columns - 1
@@ -147,8 +143,8 @@ def print_file_stats(file_name=None, file_size=None, folder_mode=False, folder_s
         print("-" * terminal_size)
     else:
         print("-" * terminal_size) 
-        print(f"// Arquivo: {file_name}")
-        print(f"// Tamanho: {convert_filesize(int(file_size))}")
+        print(f"// File: {file_name}")
+        print(f"// Size: {convert_filesize(int(file_size))}")
         print(("-" * terminal_size) + "\n")
         sleep(1)
 
@@ -161,26 +157,25 @@ def prepare_directory(download_dir, gdrive_folder_name):
         else:
             return folder_path
 
-    # TODO: Aparentemente,  fazer download colocando a opção de substituir a
-    # pasta retorna OSError. Fix this! Talvez colocar um check de se a pasta
-    # exitir, continuar sem fazer nada.
     except OSError:
-        print("\nERRO: Caractere inválido detectado no nome da pasta. Mude o nome da pasta retirando o caractere inválido [\\ / ? : * < > | \"].")
-        print("Encerrando programa...")
+        print("\n" + Fore.RED + "ERROR" + Style.RESET_ALL +
+              ": Invalid character in folder name. Rename the folder to remove the invalid characters [\\ / ? : * < > | \"].")
+        print("Aborting operation...")
         sleep(0.5)
         exit()
 
 def check_download_dir(file_name, download_dir):
         while True:
             if Path.joinpath(download_dir, file_name).exists():
-                print(f"\nWARNING: O arquivo {file_name} já está presente no diretório {download_dir}.")
-                print("// S = Substituir o arquivo.")
-                print("// C = Baixar como cópia.\n")
+                print("\n" + Fore.YELLOW + "WARNING" + Style.RESET_ALL + 
+                      f": File '{file_name}' is already present in '{download_dir}'.")
+                print("// S = Replace file.")
+                print("// C = Download as copy.\n")
                 choice = input("=> ").strip().upper()
 
                 if choice != "S" and choice != "C":
                     os.system('cls' if os.name == 'nt' else 'clear')
-                    print("ERRO: Escolha uma opção válida!\n")
+                    print(Fore.RED + "ERROR" + Style.RESET_ALL +f": {choice} is not a valid choice.\n")
 
                 elif choice == "S":
                         return file_name
@@ -196,6 +191,7 @@ def load_progress_bar(description, total_file_size=None, folder_mode=False):
         bar_format = "{desc}: {percentage:3.1f}%|{bar}| {n_fmt}B/{total_fmt}B [{elapsed}<{remaining}, {rate_fmt}]"
     else:
         bar_format = "{desc}: {percentage:3.1f}%|{bar}| {n_fmt}B/{total_fmt}B [{elapsed}<{remaining}, {rate_fmt}]{postfix:<70}"
+        # TODO: Total == None retorna exception por causa do cast int()
     return tqdm(total=int(total_file_size), desc=description, miniters=1, bar_format=bar_format, 
                 unit="B", unit_scale=True, unit_divisor=1024, dynamic_ncols=True, leave=True)
 
@@ -289,19 +285,18 @@ class DownloadSystem:
         file_size = int(file_info.get("size", 0)) 
         export_formats = constants.DRIVE_EXPORT_FORMATS[file_info["mimeType"]]
         terminal_size = os.get_terminal_size().columns - 1
-        # English: WARNING: Google Workspace File detected!
         while True:
-            print("\nAVISO: Arquivo do Google Workspace detectado!")
-            # English: WARNING :{file_info['name']} can't be downloaded directly and needs to be exported to another format beforehand.
-            print(f"AVISO: O arquivo {file_info['name']} não pode ser baixado diretamente e precisa ser convetido antes.\n")
-            print("Digite um dos formatos abaixo para converter o arquivo a ser baixado:")
+            print("\n" + Fore.YELLOW + "WARNING" + Style.RESET_ALL + ": Google Workspace file detected!")
+            print(Fore.YELLOW + "WARNING" + Style.RESET_ALL +
+                  f": File {file_info['name']} can't be downloaded directly and needs to be exported to another format beforehand.\n")
+            print("Type one of the export formats below to download your file as the chosen format:")
             print("-" * terminal_size)
             for formats in export_formats:
                 print(f"# {formats['format']}")
             print("-" * terminal_size)
-            print("NOTA: Alguns tipos de arquivo suportam apenas um tipo de formato.")            
-            print("NOTA: Essa conversão não modificará seu arquivo salvo no Google Drive!\n")
-            print("// A = Abortar operação")
+            print(Fore.YELLOW + "IMPORTANT" + Style.RESET_ALL + ": Some types of files only support one type of export format.")            
+            print(Fore.YELLOW + "IMPORTANT" + Style.RESET_ALL + ": This conversion won't affect the file's cloud version!\n")
+            print("// A = Abort Operation.")
             choosed_format = input("=> ").strip().upper()
             
             if choosed_format == "A":
@@ -314,7 +309,7 @@ class DownloadSystem:
                 break
             except StopIteration:
                 os.system('cls' if os.name == 'nt' else 'clear')
-                print("ERRO: Formato inválido. Escolha um dos formatos acima!")
+                print(Fore.RED + "ERROR" + Style.RESET_ALL + f": {choosed_format} is not a valid format choice.\n")
                 continue
         
         file_name = check_download_dir(f"{file_info['name']}{format_info['extension']}", download_dir)
@@ -336,27 +331,26 @@ class DownloadSystem:
                 # download._total_size is None until next_chunk() is called, we have
                 # to call load_progress_bar after at least one next_chunk() call.
                 if pbar_loaded == False:
-                    progress_bar = load_progress_bar("Fazendo download", downloader._total_size)
+                    progress_bar = load_progress_bar("Downloading", downloader._total_size)
                     sleep(0.5)
                     pbar_loaded = True
                 progress_bar.n = status.resumable_progress
                 progress_bar.refresh()
-            #print(F'Download {int(status.progress() * 100)}.')
         file.close()
     
     def download_by_http(self, file_info, file, format_mimetype=None):
         download_url = file_info["exportLinks"][format_mimetype] 
         header={'Authorization': 'Bearer ' + self.access_token}
         if self.folder_mode == False:
-            print("AVISO: Arquivo é muito grande para usar o método export.\n"
-                "Tentando download direto via requisição HTTP. Isto pode demorar um pouco...")
+            print(Fore.YELLOW + "WARNING" + Style.RESET_ALL + ": File is too big to use the export method.")
+            print("Trying a direct download through HTTP GET request. This can take a while...")
         
         request = requests.get(download_url, headers=header, stream=True)
         file_size = len(request.content)
         total_transfered = 0
         if self.folder_mode == False:
-            progress_bar = load_progress_bar("Fazendo Download", file_size)
-        for chunk in request.iter_content(chunk_size=8196):
+            progress_bar = load_progress_bar("Downloading", file_size)
+        for chunk in request.iter_content(chunk_size=constants.CHUNK_SIZE):
             if chunk:
                 file.write(chunk)
                 total_transfered += len(chunk)
