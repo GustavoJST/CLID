@@ -22,7 +22,7 @@ def compact_directory(file_dir):
         total_files += 1         
     
     with ZipFile(target_path, "w", zipfile.ZIP_DEFLATED) as zfile:
-        for files in tqdm(file_dir.rglob("*"), total=total_files, desc="Compactando ", dynamic_ncols=True):
+        for files in tqdm(file_dir.rglob("*"), total=total_files, desc="Compactando ", dynamic_ncols=True, unit="Files"):
             zfile.write(files, files.relative_to(file_dir)) 
 
     file_metadata = {
@@ -88,11 +88,12 @@ def remove_localfile(file_dir):
 # TODO: Será que existe uma maneira de printar automaticamente até o tamanho do
 # terminal, e não um valor fixo?
 def list_drive_files(search_results, GOOGLE_WORKSPACE_MIMETYPES):
+    terminal_size = os.get_terminal_size().columns - 1
     counter = 1
     print("\nOs seguintes arquivos foram encontrados: ")
-    print("---------------------------------------------------------------------------------------------------------------------------")
+    print("-" * terminal_size)
     print(f"{'Num':^4}  | {'Tipo':^14} | {'Tamanho':^11}    |   Nome do Arquivo")
-    print("---------------------------------------------------------------------------------------------------------------------------")
+    print("-" * terminal_size)
     for drive_file in search_results:
 
         if drive_file["mimeType"] in constants.NO_SIZE_TYPES:
@@ -104,48 +105,51 @@ def list_drive_files(search_results, GOOGLE_WORKSPACE_MIMETYPES):
         else:
             print(f"#{counter:>4} | {'File':^14} | {convert_filesize(drive_file['size']):^11} --->   {drive_file['name']}")
         counter += 1
-    print("---------------------------------------------------------------------------------------------------------------------------")
+    print("-" * terminal_size)
     print("AVISO: Arquivos com o tipo marcado com '*' não possuem suporte para download.")
     
 def list_skipped_files(skipped_files, GOOGLE_WORKSPACE_MIMETYPES):
+    terminal_size = os.get_terminal_size().columns - 1
     counter = 1
     print("\nThe following items were skipped:")
-    print("---------------------------------------------------------------------------------------------------------------------------")
+    print("-" * terminal_size)
     print(f"{'Num':^4}  | {'Tipo':^14}    |  Nome do Arquivo")
-    print("---------------------------------------------------------------------------------------------------------------------------")
+    print("-" * terminal_size)
     for drive_file in skipped_files:
         print(f"#{counter:>4} | {GOOGLE_WORKSPACE_MIMETYPES[drive_file['mimeType']]:^14} --->  {drive_file['name']}")
         counter += 1
-    print("---------------------------------------------------------------------------------------------------------------------------")
+    print("-" * terminal_size)
     print("Download the files directly from Google Drive if you need them.")
     
 def list_folders(search_results):
+    terminal_size = os.get_terminal_size().columns - 1
     counter = 1
     print("\nThe following folders were found:")
-    print("---------------------------------------------------------------------------------------------------------------------------")
+    print("-" * terminal_size)
     print(f"{'Num':^4}  |  Folder name")
-    print("---------------------------------------------------------------------------------------------------------------------------")
+    print("-" * terminal_size)
     for drive_file in search_results:
         print(f"#{counter:>4} |  {drive_file['name']}")
         counter += 1
-    print("---------------------------------------------------------------------------------------------------------------------------")
-    print("NOTE: Listing only folders present in Google Drive's 'root' directory.")  
+    print("-" * terminal_size)
+    print("NOTE: Listing only folders present in Google Drive's 'root' directory.")
 
 def print_file_stats(file_name=None, file_size=None, folder_mode=False, folder_stats=None):
+    terminal_size = os.get_terminal_size().columns - 1
     if folder_mode == True:
-        print("-------------------------------------------------------------------------------------------------")
+        print("-" * terminal_size)
         for key, value in folder_stats.items():
             # folder_size_calc needs to return the total folder size in bytes, but we
             # don't want to print it in here, as we're already printing the converterd
             # folder size.
             if key != "Bytes":
                 print(f"// {key}: {value}")
-        print("-------------------------------------------------------------------------------------------------\n")
-    else:   
-        print("-------------------------------------------------------------------------------------------------")
+        print("-" * terminal_size)
+    else:
+        print("-" * terminal_size) 
         print(f"// Arquivo: {file_name}")
         print(f"// Tamanho: {convert_filesize(int(file_size))}")
-        print("-------------------------------------------------------------------------------------------------\n")
+        print(("-" * terminal_size) + "\n")
         sleep(1)
 
 def prepare_directory(download_dir, gdrive_folder_name):
@@ -187,8 +191,11 @@ def check_download_dir(file_name, download_dir):
             else:
                 return file_name
 
-def load_progress_bar(description, total_file_size=None):
-    bar_format = "{desc}: {percentage:3.1f}%|{bar}| {n_fmt}B/{total_fmt}B [{elapsed}<{remaining}, {rate_fmt}]"
+def load_progress_bar(description, total_file_size=None, folder_mode=False):
+    if folder_mode == False:
+        bar_format = "{desc}: {percentage:3.1f}%|{bar}| {n_fmt}B/{total_fmt}B [{elapsed}<{remaining}, {rate_fmt}]"
+    else:
+        bar_format = "{desc}: {percentage:3.1f}%|{bar}| {n_fmt}B/{total_fmt}B [{elapsed}<{remaining}, {rate_fmt}]{postfix:<70}"
     return tqdm(total=int(total_file_size), desc=description, miniters=1, bar_format=bar_format, 
                 unit="B", unit_scale=True, unit_divisor=1024, dynamic_ncols=True, leave=True)
 
@@ -227,6 +234,7 @@ class DownloadSystem:
         file_path = Path.joinpath(directory, file_info["name"])
 
         if file_info["mimeType"] in constants.DRIVE_EXPORT_FORMATS.keys() and file_info["mimeType"] not in constants.UNSUPPORTED_MIMETYPES:
+            self.progress_bar.set_postfix({"File": file_info["name"]}, refresh=True)
             file_path = f"{file_path}{constants.DRIVE_EXPORT_FORMATS[file_info['mimeType']][0]['extension']}"
             file = io.FileIO(file_path, "wb")
             if file_size > 10485760:
@@ -246,6 +254,7 @@ class DownloadSystem:
 
         # Else handles ordinary files that already have an extension in their name.
         else:
+            self.progress_bar.set_postfix({"File": file_info["name"]}, refresh=True)
             request = drive.files().get_media(fileId=file_info["id"])
             file = io.FileIO(f"{file_path}", "w")
         
@@ -277,19 +286,19 @@ class DownloadSystem:
 
     def download_exported_file(self, file_info, drive, download_dir):
         pbar_loaded = False
-        file_size = int(file_info.get("size", 0))
-            
+        file_size = int(file_info.get("size", 0)) 
         export_formats = constants.DRIVE_EXPORT_FORMATS[file_info["mimeType"]]
+        terminal_size = os.get_terminal_size().columns - 1
         # English: WARNING: Google Workspace File detected!
         while True:
             print("\nAVISO: Arquivo do Google Workspace detectado!")
             # English: WARNING :{file_info['name']} can't be downloaded directly and needs to be exported to another format beforehand.
             print(f"AVISO: O arquivo {file_info['name']} não pode ser baixado diretamente e precisa ser convetido antes.\n")
             print("Digite um dos formatos abaixo para converter o arquivo a ser baixado:")
-            print("-----------------------------------------------------")
+            print("-" * terminal_size)
             for formats in export_formats:
                 print(f"# {formats['format']}")
-            print("-----------------------------------------------------")
+            print("-" * terminal_size)
             print("NOTA: Alguns tipos de arquivo suportam apenas um tipo de formato.")            
             print("NOTA: Essa conversão não modificará seu arquivo salvo no Google Drive!\n")
             print("// A = Abortar operação")

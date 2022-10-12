@@ -1,3 +1,12 @@
+#!httpteste/Scripts/python
+
+#!httpteste/Scripts/python
+""" shebang abaixo funciona, mas será que funciona também no linux? 
+1- windows
+2- linux  """
+#!httpteste/Scripts/python
+#!source httpteste/bin/python
+ 
 """  TODO:
     * Nome do programa = CLID - The CLI Google Drive ou CLI Drive - Google Drive
       up/downloader.
@@ -10,9 +19,11 @@
     * Substituir a opção S no menu por uma de calcular o tamanho de pastas.
     * Se o arquivo baixado for um .zip, perguntar se ele quer extrair o arquivo.
       Talvez ter suporte a tar.gz?
+    * Usar colorama para mudar a cor das mensagens de erro e mensagens de
+      operação concluida
  """
 
-from __future__ import print_function
+#from __future__ import print_function
 
 import os
 import constants
@@ -27,8 +38,8 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaFileUpload
-
-
+from colorama import init
+from colorama import Back, Style
 
 # If modifying these scopes, delete the file token.json.
 SCOPES = ["https://www.googleapis.com/auth/drive"]
@@ -51,12 +62,13 @@ def main():
         with open("token.json", "w") as token:
             token.write(creds.to_json())
     access_token = creds.token
+    init()
     
     # Builds the google drive service instance.
     drive = build("drive", "v3", credentials=creds)
     
     while True:
-        file_created = False
+        terminal_size = os.get_terminal_size().columns - 1
         print ("\n// D = Download file \n" 
                "// C = Upload file \n"
                "// S = Calculate folder size \n"
@@ -66,12 +78,12 @@ def main():
         if option == "E":
             break
         
-        print("=================================================================================================")
+        print("=" * terminal_size)
         if option not in constants.OPTIONS:
             os.system('cls' if os.name == 'nt' else 'clear')
-            print("=================================================================================================")
-            print("ERROR: Select a valid option from the menu below.")
-            print("=================================================================================================")
+            print("=" * terminal_size)
+            print(Back.RED + "ERROR" + Style.RESET_ALL + ": Select a valid option from the menu below.")
+            print("=" * terminal_size)
             continue
 
         if option == "D":  
@@ -183,7 +195,7 @@ def main():
                         # TODO: Mudar progress bar aqui pq o tamanho da pasta é desconhecido 
                         print("\nWARNING: Operação durou mais que o esperado. Continuando para download...")
                         sleep(0.5)
-                        progress_bar = systems.load_progress_bar(description="Fazendo download")
+                        progress_bar = systems.load_progress_bar(description="Fazendo download", folder_mode=True)
                         folder_downloader = DownloadSystem(access_token=access_token, 
                                                            progress_bar=progress_bar, 
                                                            unknown_folder_size=True, 
@@ -192,7 +204,7 @@ def main():
                         folder_stats["Archive"] = file_info["name"]
                         print("\nTo be downloaded:") 
                         systems.print_file_stats(folder_stats=folder_stats, folder_mode=True)
-                        progress_bar = systems.load_progress_bar("Fazendo Download", folder_stats["Bytes"])
+                        progress_bar = systems.load_progress_bar("Fazendo Download", folder_stats["Bytes"], folder_mode=True)
                         folder_downloader = DownloadSystem(access_token=access_token, 
                                                            progress_bar=progress_bar, 
                                                            folder_mode=True)
@@ -251,6 +263,7 @@ def main():
                 return
                  
         if option == "C":
+            file_created = False
             # Copying file paths from Windows sometimes adds a invisible
             # character "u+202a". Strip("\u202a") removes it from the beggining of the
             # file_dir string path.
@@ -275,10 +288,9 @@ def main():
                     file_metadata = {"name" : local_filename}
             else:
                 os.system('cls' if os.name == 'nt' else 'clear')
-                print("=================================================================================================")
-                # English: ERROR: File path doesn't exist.
-                print("ERRO: O caminho do arquivo não existe.")
-                print("=================================================================================================")
+                print("=" * terminal_size)
+                print("ERROR: File path doesn't exist.")
+                print("=" * terminal_size)
                 continue
             
             file_size = file_dir.stat().st_size 
@@ -351,8 +363,7 @@ def main():
                                                 q=query, 
                                                 orderBy="name").execute()
             search_results = search_request["files"]
-            systems.list_folders(search_results)
-            
+            systems.list_folders(search_results)    
             while True:    
                 folder_number = input("\nSelect a folder number to calculate it's size, or...\n"
                                     "// A = Abort operation\n\n"
@@ -376,13 +387,11 @@ def main():
                 with systems.tqdm(desc="Calculating size", dynamic_ncols=True, 
                                   unit="Files", bar_format=bar_format, initial=1) as progress_bar:
                     folder_stats = GoogleDriveSizeCalculate(drive, progress_bar).gdrive_checker(folder_info["id"])
-  
                 print()
                 systems.print_file_stats(folder_stats=folder_stats, folder_mode=True)
                 print("Operation completed!\n")
-                input("Press any key to continue")                      
-        print("=================================================================================================")
-
+                input("Press any key to continue")                     
+        print("=" * terminal_size)
     drive.close() 
          
 if __name__ == "__main__":
