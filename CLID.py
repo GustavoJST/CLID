@@ -10,24 +10,17 @@
 """  TODO:
     * Nome do programa = CLID - The CLI Google Drive ou CLI Drive - Google Drive
       up/downloader.
-    * Arquivos baixados/descompactados serão colocados na pasta downloads (ver se da pra achar pasta download do pc independente do sistema),
-        caso contrario, fazer uma pasta chamada downloads dentro do root do CLID.
     * Verificar possiblidade de mudar o algoritmo de progresso de compactação.
         Mudar para atualizar a barra conforme os bytes forem lidos,
         e não conforme um arquivo inteiro é comprimido.
-    * Usar => apenas para user input e // para multiplas escolhas.
-    * Substituir a opção S no menu por uma de calcular o tamanho de pastas.
     * Se o arquivo baixado for um .zip, perguntar se ele quer extrair o arquivo.
       Talvez ter suporte a tar.gz?
-    * Usar colorama para mudar a cor das mensagens de erro e mensagens de
-      operação concluida
  """
-
-#from __future__ import print_function
 
 import os
 import constants
 import systems
+import json
 from systems import DownloadSystem
 from folder_size_calc import GoogleDriveSizeCalculate
 from time import sleep
@@ -55,14 +48,21 @@ def main():
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
         else:
-            flow = InstalledAppFlow.from_client_secrets_file(
-                "credentials.json", SCOPES)
+            flow = InstalledAppFlow.from_client_secrets_file("credentials.json", SCOPES)
             creds = flow.run_local_server(port=0)
         # Save the credentials for the next run.
         with open("token.json", "w") as token:
             token.write(creds.to_json())
     access_token = creds.token
     init()  # Colorama init
+    
+    # Loads settings.json:
+    # download_directory(string) = Absolute path of the directory you want your files to be downloaded.
+    # upload_path(string) = Absolute path of a file you want to upload when in upload mode.
+    # Useful if you don't want to be prompted for a download directory every time
+    # or need to upload the same file every time. 
+    with open("settings.json", "r") as settings_json:
+        settings = json.load(settings_json)
     
     # Builds the google drive service instance.
     drive = build("drive", "v3", credentials=creds)
@@ -137,7 +137,7 @@ def main():
                                 if file_number == "A":
                                     os.system('cls' if os.name == 'nt' else 'clear')
                                     break
-                                # -1 because printed list index (list_drive_files) starts at 1,
+                                # -1 because the printed list index (list_drive_files) starts at 1,
                                 # while search_results list index starts at 0.
                                 file_info = search_results[int(file_number) - 1] 
                                 search_completed = True
@@ -173,9 +173,13 @@ def main():
                     continue
 
                 while True:
-                    print("\nSpecify the directory (ABSOLUTE PATH) where the file will be downloaded")
-                    print("or press enter to choose the default download directory ([CLID_folder]/downloads)")
-                    download_dir = Path(input(r"=> ").strip("\u202a").strip())
+                    if settings["download_directory"] is not None:
+                        download_dir = Path(settings["download_directory"])
+                        from_json_download = True
+                    else:
+                        print("\nSpecify the directory (ABSOLUTE PATH) where the file will be downloaded")
+                        print("or press enter to choose the default download directory ([CLID_folder]/downloads)")
+                        download_dir = Path(input(r"=> ").strip("\u202a").strip())
 
                     if download_dir == WindowsPath("."):
                         if not Path("downloads").exists():
@@ -185,8 +189,13 @@ def main():
                     else:
                         if not download_dir.exists():
                             os.system('cls' if os.name == 'nt' else 'clear')
-                            print(Fore.RED + "ERROR" + Style.RESET_ALL + f": Unable to find specified path '{download_dir}'.")
-                            print("Input only an ABSOLUTE path or press ENTER.")   
+                            print(Fore.RED + "ERROR" + Style.RESET_ALL + 
+                                  f": Unable to find specified path '{download_dir}'.")
+                            if from_json_download == True:
+                                print("Specify an ABSOLUTE path or check your settings.json file if you're using it.")
+                                input("\nPress ENTER to exit.")
+                                exit()
+                            print("Specify an ABSOLUTE path or press ENTER.")
                             continue
                         else:
                             break
@@ -271,29 +280,42 @@ def main():
                  
         if option == "C":
             file_created = False
-            # Copying file paths from Windows sometimes adds a invisible
-            # character "u+202a". Strip("\u202a") removes it from the beggining of the
-            # file_dir string path.
-            print("Specify the absolute path of the file to be uploaded")
-            print(Fore.YELLOW + "WARNING" + Style.RESET_ALL + ": If the file is a directory, it will be zipped before uploading")
-            file_dir = Path(input("=> ").strip("\u202a").strip())
-
-            if file_dir.exists():
-                if file_dir.is_dir():
-                    # Function returns the .zip file name, path, metadata and a
-                    # bool informing the .zip file creation status.
-                    target_path, local_filename, file_metadata, file_created = systems.compact_directory(file_dir)
-                    file_dir = target_path
-                    file = MediaFileUpload(file_dir, mimetype="application/zip", resumable=True, chunksize=constants.CHUNK_SIZE)
-                     
+            while True:
+                if settings["upload_path"] is not None:
+                    file_dir = Path(settings["upload_path"])
+                    from_json_upload = True
                 else:
-                    local_filename = file_dir.name 
-                    file = MediaFileUpload(file_dir, resumable=True) 
-                    file_metadata = {"name" : local_filename}
-            else:
-                os.system('cls' if os.name == 'nt' else 'clear')
-                print(Fore.RED + "ERROR" + Style.RESET_ALL + f": File path '{file_dir}' doesn't exist.")
-                continue
+                    print("Specify the absolute path of the file to be uploaded")
+                    print(Fore.YELLOW + "WARNING" + Style.RESET_ALL + 
+                          ": If the file is a directory, it will be zipped before uploading")
+                    # Copying file paths from Windows sometimes adds a invisible
+                    # character "u+202a". Strip("\u202a") removes it from the beggining of the
+                    # file_dir string path.
+                    file_dir = Path(input("=> ").strip("\u202a").strip())
+
+                if file_dir.exists():
+                    if file_dir.is_dir():
+                        # Function returns the .zip file name, path, metadata and a
+                        # bool informing the .zip file creation status.
+                        target_path, local_filename, file_metadata, file_created = systems.compact_directory(file_dir)
+                        file_dir = target_path
+                        file = MediaFileUpload(file_dir, mimetype="application/zip", 
+                                                resumable=True, chunksize=constants.CHUNK_SIZE)
+                        break                        
+                    else:
+                        local_filename = file_dir.name 
+                        file = MediaFileUpload(file_dir, resumable=True) 
+                        file_metadata = {"name" : local_filename}
+                        break
+                else:
+                    os.system('cls' if os.name == 'nt' else 'clear')
+                    print(Fore.RED + "ERROR" + Style.RESET_ALL + f": Unable to find specified path '{file_dir}'.")
+                    if from_json_upload == True:
+                        print("Specify an ABSOLUTE path or check your settings.json file if you're using it.")
+                        input("\nPress ENTER to exit.")
+                        exit()
+                    print("Specify an ABSOLUTE path")
+                    continue
             
             file_size = file_dir.stat().st_size 
             print("\nTo be uploaded:")

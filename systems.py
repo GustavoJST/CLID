@@ -11,7 +11,7 @@ from googleapiclient.http import MediaIoBaseDownload
 from time import sleep
 from colorama import init
 from colorama import Fore, Style
-init()
+init()  # Colorama init
 
 def compact_directory(file_dir): 
     print("\nFile identified as a directory. Starting compression process...", end="")
@@ -108,7 +108,7 @@ def list_skipped_files(skipped_files, GOOGLE_WORKSPACE_MIMETYPES):
     counter = 1
     print("\nThe following items were skipped:")
     print("-" * terminal_size)
-    print(f"{'Num':^4}  | {'Tipo':^14}    |  Nome do Arquivo")
+    print(f"{'Num':^4}  | {'Type':^14}    |  File name")
     print("-" * terminal_size)
     for drive_file in skipped_files:
         print(f"#{counter:>4} | {GOOGLE_WORKSPACE_MIMETYPES[drive_file['mimeType']]:^14} --->  {drive_file['name']}")
