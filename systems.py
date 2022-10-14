@@ -211,15 +211,18 @@ class DownloadSystem:
         self.access_token = access_token
                  
     def get_files(self, folder_id, directory, drive):
+        search_results = []
         page_token = None
         while True:
             search_request = drive.files().list(corpora="user", pageToken=page_token, pageSize = 1000, 
                                                 fields="nextPageToken, files(id, name, size, mimeType, exportLinks)", 
                                                 q=f"'{folder_id}' in parents and trashed=false").execute()
+            for item in search_request["files"]:
+                search_results.append(item) 
             page_token = search_request.get("nextPageToken", None)
             if page_token is None:
                 break
-        for file in search_request["files"]:
+        for file in search_results:
             if file["mimeType"] == "application/vnd.google-apps.folder":
                 # Precisa adicionar self nas chamadas ou apenas na definição?
                 self.get_files(folder_id=file["id"], 

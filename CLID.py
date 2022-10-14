@@ -1,21 +1,14 @@
-#!httpteste/Scripts/python
+#!httpteste/Scripts/python  
 
-#!httpteste/Scripts/python
-""" shebang abaixo funciona, mas será que funciona também no linux? 
-1- windows
-2- linux  """
-#!httpteste/Scripts/python
-#!source httpteste/bin/python
- 
-"""  TODO:
-    * Nome do programa = CLID - The CLI Google Drive ou CLI Drive - Google Drive
-      up/downloader.
-    * Verificar possiblidade de mudar o algoritmo de progresso de compactação.
-        Mudar para atualizar a barra conforme os bytes forem lidos,
-        e não conforme um arquivo inteiro é comprimido.
-    * Se o arquivo baixado for um .zip, perguntar se ele quer extrair o arquivo.
-      Talvez ter suporte a tar.gz?
- """
+""" Pick one of the shebangs below (according to your operating system) 
+and place it on the first line of the script:
+
+Windows 
+#!CLID_env/Scripts/python
+
+Linux
+#!/path/to/CLID/CLID_env/bin/python """
+
 
 import os
 import constants
@@ -89,20 +82,26 @@ def main():
         if option == "D":  
             try:
                 while True:
+                    search_results = []
                     search_completed = False
                     print("\nType the name of the file/folder you want to download (with it's extension) or type:")
                     print("//  list = lists all files/folders present in your Google Drive")
                     print("//     A = Abort operation")
                     search_query = input("=> ").strip().upper()
-
+                    
                     if search_query == "LIST":
+                        # TODO: Colocar if aqui a respeito do sharedWithMe
+                        query="'root' in parents and trashed=false or sharedWithMe and trashed=false"
+                        fields="nextPageToken, files(id, name, size, mimeType, exportLinks, shared)"
                         page_token = None
                         while True:
-                            search_request = drive.files().list(corpora="user", pageSize=1000, pageToken=page_token,
-                                                                fields="files(id, name, size, mimeType, exportLinks)", 
-                                                                q="'root' in parents and trashed=false", 
-                                                                orderBy="folder,name").execute()
-                            search_results = search_request["files"]
+                            search_request = drive.files().list(corpora="user", pageSize=1000, 
+                                                                pageToken=page_token,
+                                                                fields=fields, 
+                                                                q=query, 
+                                                                orderBy="folder, name").execute()
+                            for item in search_request["files"]:
+                                search_results.append(item)                  
                             page_token = search_request.get("nextPageToken", None)
                             if page_token is None:
                                 break
@@ -110,13 +109,17 @@ def main():
                         break   
 
                     else:
+                        fields="nextPageToken, files(id, name, size, mimeType, exportLinks, shared)"
+                        query=f"name contains '{search_query}' and trashed=false or sharedWithMe and trashed=false"
                         page_token = None
                         while True:
-                            search_request = drive.files().list(corpora="user", pageSize= 1000, pageToken=page_token,
-                                                                fields="nextPageToken, files(id, name, size, mimeType, exportLinks)", 
-                                                                q=f"name contains '{search_query}' and trashed=false", 
+                            search_request = drive.files().list(corpora="user", pageSize= 1000, 
+                                                                pageToken=page_token,
+                                                                fields=fields, 
+                                                                q=query, 
                                                                 orderBy="folder,name").execute()
-                            search_results = search_request["files"]
+                            for item in search_request["files"]:
+                                search_results.append(item) 
                             page_token = search_request.get("nextPageToken", None)
                             if page_token is None:
                                 break
@@ -181,7 +184,7 @@ def main():
                         print("or press enter to choose the default download directory ([CLID_folder]/downloads)")
                         download_dir = Path(input(r"=> ").strip("\u202a").strip())
 
-                    if download_dir == WindowsPath("."):
+                    if download_dir == (WindowsPath(".") if os.name == 'nt' else PosixPath(".")):
                         if not Path("downloads").exists():
                             Path("downloads").mkdir()
                         download_dir = Path("downloads")
@@ -322,18 +325,21 @@ def main():
             systems.print_file_stats(local_filename, file_size)
 
             try:
+                search_results = []
+                query = f"name = '{local_filename}' and trashed=false and 'root' in parents"
                 page_token = None
                 while True:
-                    results = drive.files().list(fields="nextPageToken, files(id, name)", 
+                    request = drive.files().list(fields="nextPageToken, files(id, name)", 
                                                  pageSize=1000, 
                                                  pageToken=page_token, 
-                                                 q=f"name = '{local_filename}' and trashed=false and 'root' in parents").execute()
-                    page_token = results.get("nextPageToken", None)
+                                                 q=query).execute()
+                    for item in request["files"]:
+                        search_results.append(item)
+                    page_token = request.get("nextPageToken", None)
                     if page_token is None:
                         break
                 try:
-                    items = results["files"]
-                    drive_file = next(file for file in items if file["name"] == local_filename)
+                    drive_file = next(file for file in search_results if file["name"] == local_filename)
                     drive_filename = drive_file["name"]
                     file_id = drive_file["id"]
                 except StopIteration:
@@ -343,7 +349,7 @@ def main():
                 # If there are two or more files with the exact same
                 # name in Drive, it will upload a copy of the file and
                 # skip user prompt.
-                if len(items) > 1 and drive_filename == local_filename:
+                if len(search_results) > 1 and drive_filename == local_filename:
                     request = systems.create_gdrive_copy(file_metadata, drive, drive_filename, file)
                     print(Fore.YELLOW + "WARNING" + Style.RESET_ALL + 
                           f": Multiple files with the same name. File will be uploaded as \"{file_metadata['name']}\".\n")
@@ -351,7 +357,7 @@ def main():
 
                 # In case there's only one file with the exact same name
                 # as the local file, in google drive.
-                elif len(items) > 0 and drive_filename == local_filename:
+                elif len(search_results) > 0 and drive_filename == local_filename:
                     upload_choice = None
                     while upload_choice not in ["Y", "C", "A"]:
                         print(Fore.YELLOW + "WARNING" + Style.RESET_ALL + ": File already existis in Google Drive. Press:")
@@ -387,7 +393,9 @@ def main():
                 file_created = False
             
         if option == "S":
-            query = "'root' in parents and trashed=false and mimeType='application/vnd.google-apps.folder'"
+            search_results = []
+            query = ("'root' in parents and trashed=false and mimeType='application/vnd.google-apps.folder' " 
+                    "or sharedWithMe and mimeType='application/vnd.google-apps.folder' and trashed=false")  
             page_token = None
             while True:
                 search_request = drive.files().list(corpora="user", 
@@ -395,11 +403,13 @@ def main():
                                                     pageToken=page_token, 
                                                     fields="files(id, name)", 
                                                     q=query, 
-                                                    orderBy="name").execute()
+                                                    orderBy="folder, name").execute()
+                for item in search_request["files"]:
+                    search_results.append(item)  
                 page_token = search_request.get("nextPageToken", None)
                 if page_token is None:
                     break
-            search_results = search_request["files"]
+                
             systems.list_folders(search_results)    
             while True:    
                 folder_number = input("\nSelect a folder number to calculate it's size, or...\n"

@@ -68,15 +68,17 @@ class GoogleDriveSizeCalculate:
             page_token = None
             page_size = 1000      
             while True:
+                results = []
                 response = self.__service.files().list(q=query, pageToken=page_token,
                                                     fields=fields, corpora="user",
                                                     pageSize=page_size,
                                                     orderBy="folder, name").execute()
-                                               
+                for item in response["files"]:
+                    results.append(item)
                 page_token = response.get("nextPageToken", None)
                 if page_token is None:
                     break
-            return response["files"]
+            return results
 
     def gDrive_file(self, **kwargs):
         try:
