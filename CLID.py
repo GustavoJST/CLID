@@ -53,7 +53,10 @@ def main():
     # download_directory(string) = Absolute path of the directory you want your files to be downloaded.
     # upload_path(string) = Absolute path of a file you want to upload when in upload mode.
     # Useful if you don't want to be prompted for a download directory every time
-    # or need to upload the same file every time. 
+    # or need to upload the same file every time.
+    # sharedWithMe(bool) = Controls file listing behaviour. 
+    # 'true' will list files created/owned by the user and files shared with the user, 
+    # while 'false' only displays files created/owned by the user.
     with open("settings.json", "r") as settings_json:
         settings = json.load(settings_json)
     
@@ -90,9 +93,12 @@ def main():
                     search_query = input("=> ").strip().upper()
                     
                     if search_query == "LIST":
-                        # TODO: Colocar if aqui a respeito do sharedWithMe
-                        query="'root' in parents and trashed=false or sharedWithMe and trashed=false"
-                        fields="nextPageToken, files(id, name, size, mimeType, exportLinks, shared)"
+                        if settings["sharedWithMe"] == False:
+                            query="'root' in parents and trashed=false"
+                            fields="nextPageToken, files(id, name, size, mimeType, exportLinks)"
+                        else:    
+                            query="'root' in parents and trashed=false or sharedWithMe and trashed=false"
+                            fields="nextPageToken, files(id, name, size, mimeType, exportLinks, shared)"
                         page_token = None
                         while True:
                             search_request = drive.files().list(corpora="user", pageSize=1000, 
@@ -109,8 +115,13 @@ def main():
                         break   
 
                     else:
-                        fields="nextPageToken, files(id, name, size, mimeType, exportLinks, shared)"
-                        query=f"name contains '{search_query}' and trashed=false or sharedWithMe and trashed=false"
+                        if settings["sharedWithMe"] == False:
+                            query=f"name contains '{search_query}' and trashed=false and 'root' in parents"
+                            fields="nextPageToken, files(id, name, size, mimeType, exportLinks)"
+                        else:    
+                            query=f"name contains '{search_query}' and trashed=false and sharedWithMe"
+                            fields="nextPageToken, files(id, name, size, mimeType, exportLinks, shared)"
+                            
                         page_token = None
                         while True:
                             search_request = drive.files().list(corpora="user", pageSize= 1000, 
@@ -229,6 +240,12 @@ def main():
                                                            folder_mode=True)
                     
                     folder_downloader.get_files(file_info["id"], directory, drive)
+                    
+                    # Fills progress bar in case of exported files that shrank
+                    # in size during download.
+                    if progress_bar.n != progress_bar.total:
+                        progress_bar.n = progress_bar.total
+                        progress_bar.refresh()
                     progress_bar.close()
                         
                 # If file is a Google Workspace type but not a folder:
@@ -394,8 +411,11 @@ def main():
             
         if option == "S":
             search_results = []
-            query = ("'root' in parents and trashed=false and mimeType='application/vnd.google-apps.folder' " 
-                    "or sharedWithMe and mimeType='application/vnd.google-apps.folder' and trashed=false")  
+            if settings["sharedWithMe"] == False:
+                query = ("'root' in parents and trashed=false and mimeType='application/vnd.google-apps.folder'") 
+            else:    
+                query = ("'root' in parents and trashed=false and mimeType='application/vnd.google-apps.folder' " 
+                        "or sharedWithMe and mimeType='application/vnd.google-apps.folder' and trashed=false")  
             page_token = None
             while True:
                 search_request = drive.files().list(corpora="user", 

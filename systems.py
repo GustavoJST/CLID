@@ -268,13 +268,13 @@ class DownloadSystem:
         done = False
         while done == False:
             status, done = downloader.next_chunk()
-            if self.folder_mode == True and self.progress_bar.total is not None:                        
+            if self.folder_mode == True and self.progress_bar.total is not None:
+                chunk = status.resumable_progress                        
                 """ Folder size is calculated based on the size of the files inside
                 the folder, but when exporting files to a different format, they
-                can increase or decrease in size (depending on the format).
+                can increase in size (depending on the format).
                 Because of this change, the progress bar can surpass the maximum
-                size value, or not reach it. The code below fix this behavior. """
-                chunk = status.resumable_progress
+                size value. The code below fix this behavior. """
                 if (chunk + self.progress_bar.n) >= self.progress_bar.total:
                     self.progress_bar.n = self.progress_bar.total
                     self.progress_bar.refresh() 
