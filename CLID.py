@@ -430,7 +430,13 @@ def main():
                 if page_token is None:
                     break
                 
-            systems.list_folders(search_results)    
+            systems.list_folders(search_results)
+            if settings["shared_with_me"] == False:
+                print(Fore.YELLOW + "WARNING" + Style.RESET_ALL +
+                    ": Listing only folders present in Google Drive's 'root' directory.")    
+            else:
+                print(Fore.YELLOW + "WARNING" + Style.RESET_ALL +
+                      ": Listing folders present in Google Drive's 'root' directory and folders shared with the user.")
             while True:    
                 folder_number = input("\nSelect a folder number to calculate it's size, or...\n"
                                     "// A = Abort operation\n\n"

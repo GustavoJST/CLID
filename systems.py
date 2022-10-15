@@ -131,9 +131,7 @@ def list_folders(search_results):
         print(f"#{counter:>4} |  {drive_file['name']}")
         counter += 1
     print("-" * terminal_size)
-    # TODO: Colocar if se a sharedWithMe for true: mostrar isso aqui
-    print(Fore.YELLOW + "WARNING" + Style.RESET_ALL +
-          ": Listing only folders present in Google Drive's 'root' directory.")
+    
 
 def print_file_stats(file_name=None, file_size=None, folder_mode=False, folder_stats=None):
     terminal_size = os.get_terminal_size().columns - 1
