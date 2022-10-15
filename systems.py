@@ -13,6 +13,7 @@ from colorama import init
 from colorama import Fore, Style
 init()  # Colorama init
 
+# TODO: talvez seja necessário colocar allowZip64=True em ZipFile para arquivos maiores que 4gb
 def compact_directory(file_dir): 
     print("\nFile identified as a directory. Starting compression process...", end="")
     sleep(0.5)
@@ -31,6 +32,23 @@ def compact_directory(file_dir):
                      "mimetype" : "application/zip"}
     file_created = True
     return target_path, local_filename, file_metadata, file_created
+
+def extract_file(zipfile_path, extract_folder_path):
+    with ZipFile(zipfile_path, "r", allowZip64=True) as zfile:
+        total_size = sum([zinfo.file_size for zinfo in zfile.filelist]) 
+        progress_bar = load_progress_bar(description="Extracting", total_file_size=total_size, folder_mode=True)   
+        for item in zfile.infolist():
+            item.filename.rsplit("/", 1)[-1]
+            progress_bar.set_postfix({"File": item.filename.rsplit("/", 1)[-1]}, refresh=True)
+            with zfile.open(item) as file:
+                while True:
+                    chunk = file.read()       
+                    zfile.extract(item, extract_folder_path, chunk)
+                    progress_bar.update(len(chunk))
+                    progress_bar.refresh()
+                    if not chunk:
+                        break
+    progress_bar.close() 
 
 def convert_filesize(size_bytes):
     size_bytes = int(size_bytes)
@@ -132,7 +150,6 @@ def list_folders(search_results):
         counter += 1
     print("-" * terminal_size)
     
-
 def print_file_stats(file_name=None, file_size=None, folder_mode=False, folder_stats=None):
     terminal_size = os.get_terminal_size().columns - 1
     if folder_mode == True:

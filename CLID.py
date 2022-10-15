@@ -11,9 +11,12 @@ Linux
 
 
 import os
+
 import constants
 import systems
 import json
+from zipfile import ZipFile
+from zipfile import  is_zipfile
 from systems import DownloadSystem
 from folder_size_calc import GoogleDriveSizeCalculate
 from time import sleep
@@ -292,7 +295,34 @@ def main():
                         else:
                             print("\n" + Fore.RED + "ERROR" + Style.RESET_ALL + ": Choose a valid option!")
                             continue
-               
+                        
+                if Path(file_info["name"]).suffix == ".zip":
+                    while True:
+                        print("\n" + Fore.YELLOW + "WARNING" + Style.RESET_ALL +
+                            ": Looks like the file you downloaded was a .zip file. "
+                            "Do you want to extract it to where it was downloaded? (Y/N)")
+                        choice = input("=> ").strip().upper()
+                        if choice == "N" or choice == "Y":
+                            break
+                        else:
+                            os.system('cls' if os.name == 'nt' else 'clear')
+                            print("\n" + Fore.RED + "ERROR" + Style.RESET_ALL + ": Choose a valid option!")
+                            continue
+                    
+                    if choice != "N":
+                        zipfile_path = Path.joinpath(download_dir, file_info["name"])
+                        extract_folder_path = zipfile_path.with_suffix("")
+                        if extract_folder_path.exists():
+                            print("\n" + Fore.YELLOW + "WARNING" + Style.RESET_ALL + 
+                                f": Extraction folder {extract_folder_path} already exists. Renaming...", end="")
+                            counter = 0
+                            while extract_folder_path.exists():
+                                    counter += 1
+                                    extract_folder_path = Path(f"{extract_folder_path} ({counter})")
+                            print(Fore.GREEN + "Done!\n" + Style.RESET_ALL)
+                        systems.extract_file(zipfile_path, extract_folder_path)  
+                        print("\nExtraction completed!")
+                
             # TODO: how to handle htppError?                   
             except HttpError as error:
                 print(f"An error occurred: {error}")
