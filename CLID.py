@@ -97,7 +97,7 @@ def main():
                             query="'root' in parents and trashed=false"
                             fields="nextPageToken, files(id, name, size, mimeType, exportLinks)"
                         else:    
-                            query="'root' in parents and trashed=false or shared_with_me and trashed=false"
+                            query="'root' in parents and trashed=false or sharedWithMe and trashed=false"
                             fields="nextPageToken, files(id, name, size, mimeType, exportLinks, shared)"
                         page_token = None
                         while True:
@@ -119,7 +119,7 @@ def main():
                             query=f"name contains '{search_query}' and trashed=false and 'root' in parents"
                             fields="nextPageToken, files(id, name, size, mimeType, exportLinks)"
                         else:    
-                            query=f"name contains '{search_query}' and trashed=false and shared_with_me"
+                            query=f"name contains '{search_query}' and trashed=false and sharedWithMe"
                             fields="nextPageToken, files(id, name, size, mimeType, exportLinks, shared)"
                             
                         page_token = None
@@ -415,7 +415,7 @@ def main():
                 query = ("'root' in parents and trashed=false and mimeType='application/vnd.google-apps.folder'") 
             else:    
                 query = ("'root' in parents and trashed=false and mimeType='application/vnd.google-apps.folder' " 
-                        "or shared_with_me and mimeType='application/vnd.google-apps.folder' and trashed=false")  
+                        "or sharedWithMe and mimeType='application/vnd.google-apps.folder' and trashed=false")  
             page_token = None
             while True:
                 search_request = drive.files().list(corpora="user", 
