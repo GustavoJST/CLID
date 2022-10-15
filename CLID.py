@@ -1,13 +1,13 @@
-#!httpteste/Scripts/python  
+#!./httpteste/Scripts/python  
 
 """ Pick one of the shebangs below (according to your operating system) 
 and place it on the first line of the script:
 
 Windows 
-#!CLID_env/Scripts/python
+#!./CLID_env/Scripts/python
 
 Linux
-#!/path/to/CLID/CLID_env/bin/python """
+#!./CLID_env/bin/python """
 
 
 import os
@@ -17,7 +17,7 @@ import json
 from systems import DownloadSystem
 from folder_size_calc import GoogleDriveSizeCalculate
 from time import sleep
-from pathlib import Path, WindowsPath
+from pathlib import Path, WindowsPath, PosixPath
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -54,7 +54,7 @@ def main():
     # upload_path(string) = Absolute path of a file you want to upload when in upload mode.
     # Useful if you don't want to be prompted for a download directory every time
     # or need to upload the same file every time.
-    # sharedWithMe(bool) = Controls file listing behaviour. 
+    # shared_with_me(bool) = Controls file listing behaviour. 
     # 'true' will list files created/owned by the user and files shared with the user, 
     # while 'false' only displays files created/owned by the user.
     with open("settings.json", "r") as settings_json:
@@ -93,11 +93,11 @@ def main():
                     search_query = input("=> ").strip().upper()
                     
                     if search_query == "LIST":
-                        if settings["sharedWithMe"] == False:
+                        if settings["shared_with_me"] == False:
                             query="'root' in parents and trashed=false"
                             fields="nextPageToken, files(id, name, size, mimeType, exportLinks)"
                         else:    
-                            query="'root' in parents and trashed=false or sharedWithMe and trashed=false"
+                            query="'root' in parents and trashed=false or shared_with_me and trashed=false"
                             fields="nextPageToken, files(id, name, size, mimeType, exportLinks, shared)"
                         page_token = None
                         while True:
@@ -115,11 +115,11 @@ def main():
                         break   
 
                     else:
-                        if settings["sharedWithMe"] == False:
+                        if settings["shared_with_me"] == False:
                             query=f"name contains '{search_query}' and trashed=false and 'root' in parents"
                             fields="nextPageToken, files(id, name, size, mimeType, exportLinks)"
                         else:    
-                            query=f"name contains '{search_query}' and trashed=false and sharedWithMe"
+                            query=f"name contains '{search_query}' and trashed=false and shared_with_me"
                             fields="nextPageToken, files(id, name, size, mimeType, exportLinks, shared)"
                             
                         page_token = None
@@ -411,11 +411,11 @@ def main():
             
         if option == "S":
             search_results = []
-            if settings["sharedWithMe"] == False:
+            if settings["shared_with_me"] == False:
                 query = ("'root' in parents and trashed=false and mimeType='application/vnd.google-apps.folder'") 
             else:    
                 query = ("'root' in parents and trashed=false and mimeType='application/vnd.google-apps.folder' " 
-                        "or sharedWithMe and mimeType='application/vnd.google-apps.folder' and trashed=false")  
+                        "or shared_with_me and mimeType='application/vnd.google-apps.folder' and trashed=false")  
             page_token = None
             while True:
                 search_request = drive.files().list(corpora="user", 
