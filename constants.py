@@ -20,7 +20,8 @@ GOOGLE_WORKSPACE_MIMETYPES = {"application/vnd.google-apps.script": "Script",
                             "application/vnd.google-apps.form": "*Form",
                             "application/vnd.google-apps.map": "*Map",
                             "application/vnd.google-apps.site": "*Site",
-                            "application/vnd.google-apps.photo": "Photo"}
+                            "application/vnd.google-apps.photo": "Photo",
+                            "application/vnd.google-apps.shortcut": "*Shortcut"}
                             
 DRIVE_EXPORT_FORMATS = {"application/vnd.google-apps.script": 
                             [{"format": "JSON", "mimetype": "application/vnd.google-apps.script+json", "extension": ".json"}],
@@ -55,7 +56,8 @@ NO_SIZE_TYPES = ["application/vnd.google-apps.folder",
                 "application/vnd.google-apps.map",
                 "application/vnd.google-apps.site",
                 "application/vnd.google-apps.form",
-                "application/vnd.google-apps.script"]
+                "application/vnd.google-apps.script",
+                "application/vnd.google-apps.shortcut"]
 
 # Can't download those files directly from the API.
 UNSUPPORTED_MIMETYPES = ["application/vnd.google-apps.form",

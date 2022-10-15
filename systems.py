@@ -89,14 +89,18 @@ def list_drive_files(search_results, GOOGLE_WORKSPACE_MIMETYPES):
     print(f"{'Num':^4}  | {'Type':^14} | {'Size':^11}    |   File name")
     print("-" * terminal_size)
     for drive_file in search_results:
-
-        if drive_file["mimeType"] in constants.NO_SIZE_TYPES:
+        try:
+            if drive_file["mimeType"] in constants.NO_SIZE_TYPES:
+                print(f"#{counter:>4} | {GOOGLE_WORKSPACE_MIMETYPES[drive_file['mimeType']]:^14} | {'-----':^11} --->   {drive_file['name']}")
+    
+            elif drive_file["mimeType"] in constants.GOOGLE_WORKSPACE_MIMETYPES.keys():
+                print(f"#{counter:>4} | {GOOGLE_WORKSPACE_MIMETYPES[drive_file['mimeType']]:^14} | {convert_filesize(drive_file['size']):^11} --->   {drive_file['name']}") 
+        # Sometimes even for supported mimetypes like docs or spreadsheet, 
+        # the API will not return a "size" key. The except handles this cases.
+        except KeyError:
             print(f"#{counter:>4} | {GOOGLE_WORKSPACE_MIMETYPES[drive_file['mimeType']]:^14} | {'-----':^11} --->   {drive_file['name']}")
         
-        elif drive_file["mimeType"] in constants.GOOGLE_WORKSPACE_MIMETYPES.keys():
-             print(f"#{counter:>4} | {GOOGLE_WORKSPACE_MIMETYPES[drive_file['mimeType']]:^14} | {convert_filesize(drive_file['size']):^11} --->   {drive_file['name']}") 
-
-        else:
+        if drive_file["mimeType"] not in constants.GOOGLE_WORKSPACE_MIMETYPES.keys():
             print(f"#{counter:>4} | {'File':^14} | {convert_filesize(drive_file['size']):^11} --->   {drive_file['name']}")
         counter += 1
     print("-" * terminal_size)
@@ -127,6 +131,7 @@ def list_folders(search_results):
         print(f"#{counter:>4} |  {drive_file['name']}")
         counter += 1
     print("-" * terminal_size)
+    # TODO: Colocar if se a sharedWithMe for true: mostrar isso aqui
     print(Fore.YELLOW + "WARNING" + Style.RESET_ALL +
           ": Listing only folders present in Google Drive's 'root' directory.")
 
