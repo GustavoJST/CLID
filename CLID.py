@@ -15,8 +15,6 @@ import os
 import constants
 import systems
 import json
-from zipfile import ZipFile
-from zipfile import  is_zipfile
 from systems import DownloadSystem
 from folder_size_calc import GoogleDriveSizeCalculate
 from time import sleep
@@ -208,10 +206,13 @@ def main():
                             os.system('cls' if os.name == 'nt' else 'clear')
                             print(Fore.RED + "ERROR" + Style.RESET_ALL + 
                                   f": Unable to find specified path '{download_dir}'.")
-                            if from_json_download == True:
-                                print("Specify an ABSOLUTE path or check your settings.json file if you're using it.")
-                                input("\nPress ENTER to exit.")
-                                exit()
+                            try:
+                                if from_json_download == True:
+                                    print("Specify an ABSOLUTE path or check your settings.json file if you're using it.")
+                                    input("\nPress ENTER to exit.")
+                                    exit()
+                            except UnboundLocalError:
+                                pass
                             print("Specify an ABSOLUTE path or press ENTER.")
                             continue
                         else:
@@ -295,7 +296,8 @@ def main():
                         else:
                             print("\n" + Fore.RED + "ERROR" + Style.RESET_ALL + ": Choose a valid option!")
                             continue
-                        
+                
+                # Handles .zip files extraction if the user wants to.        
                 if Path(file_info["name"]).suffix == ".zip":
                     while True:
                         print("\n" + Fore.YELLOW + "WARNING" + Style.RESET_ALL +
@@ -335,7 +337,7 @@ def main():
                     file_dir = Path(settings["upload_path"])
                     from_json_upload = True
                 else:
-                    print("Specify the absolute path of the file to be uploaded")
+                    print("\nSpecify the absolute path of the file to be uploaded.")
                     print(Fore.YELLOW + "WARNING" + Style.RESET_ALL + 
                           ": If the file is a directory, it will be zipped before uploading")
                     # Copying file paths from Windows sometimes adds a invisible
@@ -347,8 +349,7 @@ def main():
                     if file_dir.is_dir():
                         # Function returns the .zip file name, path, metadata and a
                         # bool informing the .zip file creation status.
-                        target_path, local_filename, file_metadata, file_created = systems.compact_directory(file_dir)
-                        file_dir = target_path
+                        file_dir, local_filename, file_metadata, file_created = systems.compact_directory(file_dir)
                         file = MediaFileUpload(file_dir, mimetype="application/zip", 
                                                 resumable=True, chunksize=constants.CHUNK_SIZE)
                         break                        
@@ -359,12 +360,15 @@ def main():
                         break
                 else:
                     os.system('cls' if os.name == 'nt' else 'clear')
-                    print(Fore.RED + "ERROR" + Style.RESET_ALL + f": Unable to find specified path '{file_dir}'.")
-                    if from_json_upload == True:
-                        print("Specify an ABSOLUTE path or check your settings.json file if you're using it.")
-                        input("\nPress ENTER to exit.")
-                        exit()
-                    print("Specify an ABSOLUTE path")
+                    print(Fore.RED + "ERROR" + Style.RESET_ALL + f": Unable to find specified path '{file_dir}'.", end=" ")
+                    try:
+                        if from_json_upload == True:
+                            print("Specify an ABSOLUTE path or check your settings.json file if you're using it.")
+                            input("\nPress ENTER to exit.")
+                            exit()
+                    except UnboundLocalError:
+                        pass
+                    print("Specify a ABSOLUTE path.")
                     continue
             
             file_size = file_dir.stat().st_size 
