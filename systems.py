@@ -38,7 +38,6 @@ def prompt_duplicate_file(file_path, mode:str):
 def compact_directory(file_dir): 
     print("\nFile identified as a directory. Starting compression process...", end="")
     sleep(0.5)
-    # FIXME: String vazia na hora de colocar o diretório para compactar irá retornar erro
     target_path = Path(file_dir).with_suffix(".zip")
     local_filename = target_path.name
     folder_size = sum(file.stat().st_size for file in file_dir.rglob('*') if file.is_file())

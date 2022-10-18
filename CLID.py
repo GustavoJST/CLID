@@ -334,8 +334,8 @@ def main():
                     # character "u+202a". Strip("\u202a") removes it from the beggining of the
                     # file_dir string path.
                     file_dir = Path(input("=> ").strip("\u202a").strip())
-
-                if file_dir.exists():
+                    
+                if file_dir.exists() and file_dir != (WindowsPath(".") if os.name == "nt" else PosixPath(".")):
                     if file_dir.is_dir():
                         # Function returns the .zip file name, path, metadata and a
                         # bool informing the .zip file creation status.
