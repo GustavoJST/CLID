@@ -189,22 +189,22 @@ def list_drive_files(search_results, GOOGLE_WORKSPACE_MIMETYPES):
     counter = 1
     print("\nThe following files were found:")
     print("-" * terminal_size)
-    print(f"{'Num':^4}  | {'Type':^14} | {'Size':^11}    |   File name")
+    print(f"{'Num':^4}  | {'Type':^16} | {'Size':^11}    |   File name")
     print("-" * terminal_size)
     for drive_file in search_results:
         try:
             if drive_file["mimeType"] in constants.NO_SIZE_TYPES:
-                print(f"#{counter:>4} | {GOOGLE_WORKSPACE_MIMETYPES[drive_file['mimeType']]:^14} | {'-----':^11} --->   {drive_file['name']}")
+                print(f"#{counter:>4} | {GOOGLE_WORKSPACE_MIMETYPES[drive_file['mimeType']]:^16} | {'-----':^11} --->   {drive_file['name']}")
     
             elif drive_file["mimeType"] in constants.GOOGLE_WORKSPACE_MIMETYPES.keys():
-                print(f"#{counter:>4} | {GOOGLE_WORKSPACE_MIMETYPES[drive_file['mimeType']]:^14} | {convert_filesize(drive_file['size']):^11} --->   {drive_file['name']}") 
+                print(f"#{counter:>4} | {GOOGLE_WORKSPACE_MIMETYPES[drive_file['mimeType']]:^16} | {convert_filesize(drive_file['size']):^11} --->   {drive_file['name']}") 
         # Sometimes even for supported mimetypes like docs or spreadsheet, 
-        # the API will not return a "size" key. The except handles this cases.
+        # the API will not return a "size" key. The 'except' handles this cases.
         except KeyError:
-            print(f"#{counter:>4} | {GOOGLE_WORKSPACE_MIMETYPES[drive_file['mimeType']]:^14} | {'-----':^11} --->   {drive_file['name']}")
+            print(f"#{counter:>4} | {GOOGLE_WORKSPACE_MIMETYPES[drive_file['mimeType']]:^16} | {'-----':^11} --->   {drive_file['name']}")
         
         if drive_file["mimeType"] not in constants.GOOGLE_WORKSPACE_MIMETYPES.keys():
-            print(f"#{counter:>4} | {'File':^14} | {convert_filesize(drive_file['size']):^11} --->   {drive_file['name']}")
+            print(f"#{counter:>4} | {'File':^16} | {convert_filesize(drive_file['size']):^11} --->   {drive_file['name']}")
         counter += 1
     print("-" * terminal_size)
     print(Fore.YELLOW + "WARNING" + Style.RESET_ALL +
@@ -215,10 +215,10 @@ def list_skipped_files(skipped_files, GOOGLE_WORKSPACE_MIMETYPES):
     counter = 1
     print("\nThe following items were skipped:")
     print("-" * terminal_size)
-    print(f"{'Num':^4}  | {'Type':^14}    |  File name")
+    print(f"{'Num':^4}  | {'Type':^18}    |  File name")
     print("-" * terminal_size)
     for drive_file in skipped_files:
-        print(f"#{counter:>4} | {GOOGLE_WORKSPACE_MIMETYPES[drive_file['mimeType']]:^14} --->  {drive_file['name']}")
+        print(f"#{counter:>4} | {GOOGLE_WORKSPACE_MIMETYPES[drive_file['mimeType']]:^18} --->  {drive_file['name']}")
         counter += 1
     print("-" * terminal_size)
     print("Download the files directly from Google Drive if you need them.")

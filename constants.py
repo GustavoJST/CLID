@@ -21,7 +21,8 @@ GOOGLE_WORKSPACE_MIMETYPES = {"application/vnd.google-apps.script": "Script",
                             "application/vnd.google-apps.map": "*Map",
                             "application/vnd.google-apps.site": "*Site",
                             "application/vnd.google-apps.photo": "Photo",
-                            "application/vnd.google-apps.shortcut": "*Shortcut"}
+                            "application/vnd.google-apps.shortcut": "*Shortcut",
+                            "application/vnd.google-apps.drive-sdk": "*3rd Pt Shortcut"}
                             
 DRIVE_EXPORT_FORMATS = {"application/vnd.google-apps.script": 
                             [{"format": "JSON", "mimetype": "application/vnd.google-apps.script+json", "extension": ".json"}],
@@ -34,7 +35,7 @@ DRIVE_EXPORT_FORMATS = {"application/vnd.google-apps.script":
                             [{"format": "PDF", "mimetype": "application/pdf", "extension": ".pdf"}],
 
                         "application/vnd.google-apps.document": 
-                            [{"format": "MS Word document", "mimetype": "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "extension": ".docx"}, 
+                            [{"format": "MS Word", "mimetype": "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "extension": ".docx"}, 
                             {"format": "HTML", "mimetype": "text/html", "extension": ".html"},
                             {"format": "Plain Text", "mimetype": "text/plain", "extension": ".txt"},
                             {"format": "PDF", "mimetype": "application/pdf", "extension": ".pdf"}],
@@ -50,16 +51,18 @@ DRIVE_EXPORT_FORMATS = {"application/vnd.google-apps.script":
                             {"format": "CSV", "mimetype": "text/csv", "extension": ".csv"},
                             {"format": "PDF", "mimetype": "application/pdf", "extension": ".pdf"}]}
 
-# Google Drive doesn't return the size for these types of files, or returns a
-# fixed value of 1KB.
+# Google Drive doesn't return the size for these types of files.
 NO_SIZE_TYPES = ["application/vnd.google-apps.folder", 
                 "application/vnd.google-apps.map",
                 "application/vnd.google-apps.site",
                 "application/vnd.google-apps.form",
                 "application/vnd.google-apps.script",
-                "application/vnd.google-apps.shortcut"]
+                "application/vnd.google-apps.shortcut",
+                "application/vnd.google-apps.drive-sdk"]
 
 # Can't download those files directly from the API.
 UNSUPPORTED_MIMETYPES = ["application/vnd.google-apps.form",
                         "application/vnd.google-apps.map",
-                        "application/vnd.google-apps.site"]
+                        "application/vnd.google-apps.site",
+                        "application/vnd.google-apps.shortcut",
+                        "application/vnd.google-apps.drive-sdk"]
