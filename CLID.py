@@ -9,9 +9,7 @@ Windows
 Linux
 #!./CLID_env/bin/python """
 
-
 import os
-
 import constants
 import systems
 import json
@@ -314,14 +312,6 @@ def main():
                     if choice != "N":
                         zipfile_path = Path.joinpath(download_dir, file_info["name"])
                         extract_folder_path = zipfile_path.with_suffix("")
-                        if extract_folder_path.exists():
-                            print("\n" + Fore.YELLOW + "WARNING" + Style.RESET_ALL + 
-                                f": Extraction folder {extract_folder_path} already exists. Renaming...", end="")
-                            counter = 0
-                            while extract_folder_path.exists():
-                                    counter += 1
-                                    extract_folder_path = Path(f"{extract_folder_path} ({counter})")
-                            print(Fore.GREEN + "Done!\n" + Style.RESET_ALL)
                         systems.extract_file(zipfile_path, extract_folder_path)  
                         print("\nExtraction completed!")
                 

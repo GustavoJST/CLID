@@ -13,43 +13,130 @@ from colorama import init
 from colorama import Fore, Style
 init()  # Colorama init
 
-# TODO: talvez seja necessário colocar allowZip64=True em ZipFile para arquivos maiores que 4gb
+def prompt_duplicate_file(file_path, mode:str):
+    while True:
+        if mode == "compress":
+            print("\n" + Fore.YELLOW + "WARNING" + Style.RESET_ALL + 
+                f": Zip file '{file_path}' already exists.")
+            print("// RN = Rename file (Adds a number next to it).")
+            print("// RP = Replace file.")
+        else:
+            print("\n" + Fore.YELLOW + "WARNING" + Style.RESET_ALL + 
+                f": Extraction folder '{file_path}' already exists.")
+            print("// RN = Rename folder (Adds a number next to it).")
+            print("// RP = Replace folder.")
+        choice = input("=> ").strip().upper()
+        
+        if choice == "RN" or choice == "RP":
+            break
+        else:
+            os.system('cls' if os.name == 'nt' else 'clear')
+            print("\n" + Fore.RED + "ERROR" + Style.RESET_ALL + ": Choose a valid option!")
+            continue
+    return choice
+    
 def compact_directory(file_dir): 
     print("\nFile identified as a directory. Starting compression process...", end="")
     sleep(0.5)
-    target_path = Path(f"{file_dir}.zip")
+    # FIXME: String vazia na hora de colocar o diretório para compactar irá retornar erro
+    target_path = Path(file_dir).with_suffix(".zip")
     local_filename = target_path.name
-     
-    total_files = 0
-    for file in file_dir.rglob("*"):
-        total_files += 1
+    folder_size = sum(file.stat().st_size for file in file_dir.rglob('*') if file.is_file())
     print(Fore.GREEN + "Done!" + Style.RESET_ALL)
-               
-    with ZipFile(target_path, "w", zipfile.ZIP_DEFLATED) as zfile:
-        for files in tqdm(file_dir.rglob("*"), total=total_files, desc="Compressing", dynamic_ncols=True, unit="Files"):
-            zfile.write(files, files.relative_to(file_dir)) 
+    
+    if target_path.exists():
+        choice = prompt_duplicate_file(target_path, "compress")
+      
+        if choice == "RN":
+            counter = 0
+            print("\nRenaming file...", end="")
+            path = target_path.parent.absolute() 
+            while target_path.exists():
+                counter += 1
+                pure_filename = target_path.stem.strip(f"({counter - 1})")
+                target_path = Path(f"{path}/{pure_filename}({counter})").with_suffix(".zip")
+            local_filename = target_path.name
+            print(Fore.GREEN + "Done!\n" + Style.RESET_ALL)
+          
+    with ZipFile(target_path, "w", zipfile.ZIP_DEFLATED, allowZip64=True) as zfile:
+        progress_bar = load_progress_bar(description="Compressing", 
+                                         total_file_size=folder_size, 
+                                         folder_mode=True)
+        for item in file_dir.rglob("*"):       
+            current_file_path = str(item.relative_to(file_dir))
+            progress_bar.set_postfix({"File": item.name}, refresh=True)
+            if item.is_file():
+                with open(item, "rb") as input_file, zfile.open(current_file_path, "w") as output_file:
+                    while True:
+                        chunk = input_file.read(524288)
+                        progress_bar.update(len(chunk))
+                        if not chunk:
+                           break
+                        output_file.write(chunk)
+            else:
+                zfile.write(item, item.relative_to(file_dir))
+            
     file_metadata = {"name" : local_filename, 
                      "mimetype" : "application/zip"}
     file_created = True
     return target_path, local_filename, file_metadata, file_created
 
-def extract_file(zipfile_path, extract_folder_path):
+def extract_file(zipfile_path, extract_folder_path): 
+    if extract_folder_path.exists():
+        choice = prompt_duplicate_file(extract_folder_path, "extract")
+        
+        if choice == "RN":
+            counter = 0
+            print("\nRenaming file...", end="")
+            path = extract_folder_path.parent.absolute()
+            while extract_folder_path.exists():
+                counter += 1
+                folder_name = extract_folder_path.name.strip(f"({counter - 1})")
+                extract_folder_path = Path(f"{path}/{folder_name}({counter})")
+            print(Fore.GREEN + "Done!\n" + Style.RESET_ALL)
+    
+    
     with ZipFile(zipfile_path, "r", allowZip64=True) as zfile:
-        total_size = sum([zinfo.file_size for zinfo in zfile.filelist]) 
-        progress_bar = load_progress_bar(description="Extracting", total_file_size=total_size, folder_mode=True)   
+        total_size = sum(zinfo.file_size for zinfo in zfile.filelist) 
+        progress_bar = load_progress_bar(description="Extracting", total_file_size=total_size, folder_mode=True)
+               
         for item in zfile.infolist():
-            item.filename.rsplit("/", 1)[-1]
+            """ Duct tape fix for a problem I spent days trying to solve, but didn't manage to 
+            get a good solution. Here's the problem:
+            
+            As of Python 3.10, the ZipFile module only accepts two encoding formats when it 
+            comes to filenames in a zip file. These are 'cp437' and 'utf-8'. How ZipFile switches 
+            between these two encoding types is a mystery to me, but from my testing, if you zip 
+            a file using ZipFile, and it has utf-8 characters inside, then it will use utf-8 
+            encoding, otherwise, it will use cp437. ZipFile will also use cp437 when extracting 
+            zip files not created by ZipFile, even if they have utf-8 chars. So if you want to
+            extract a file using ZipFile utf-8 encoding for file names, you'll be only able do 
+            that if you zip (using ZipFile) a file that has utf-8 characters, otherwise, you better 
+            hope all the characters in your language are in the cp437 char table.
+            
+            When reading a filename using cp437, depending on the characters present in the 
+            filename, you will get wrong encoded chars (mojibake). For me, what was supposed 
+            to be 'ã' became '╞' and 'õ' became 'Σ', as this chars are not supported by cp437.
+            
+            This fix is only useful for my native language (pt-BR), as 'ã'/'õ' is used a lot, 
+            and all other characters are covered by cp437. This will be problem if your language 
+            has a lot of characters not covered by cp437. Other fixes I tried was using a module 
+            named 'ftfy', or using a combination of encode/decode methods, but none of them 
+            worked and just returned mojibake.
+            
+            If you are still reading this and plan to use this code on your own project,
+            changes in the code below may be necessary. Let me know if you have a better
+            way to fix this (please, as this solution is really ugly!).
+            
+            If you are reading this after Python 3.11 has been released, ZipFile added a 
+            'metadata_encoding' argument in the ZipFile constructor, so maybe that can fix
+            the encoding problem. """ 
+            item.filename = item.filename.replace("╞","ã").replace("Σ","õ")
             progress_bar.set_postfix({"File": item.filename.rsplit("/", 1)[-1]}, refresh=True)
-            with zfile.open(item) as file:
-                while True:
-                    chunk = file.read()       
-                    zfile.extract(item, extract_folder_path, chunk)
-                    progress_bar.update(len(chunk))
-                    progress_bar.refresh()
-                    if not chunk:
-                        break
-    progress_bar.close() 
-
+            zfile.extract(item, extract_folder_path)
+            progress_bar.update(item.file_size)
+    progress_bar.close()
+     
 def convert_filesize(size_bytes):
     size_bytes = int(size_bytes)
     if size_bytes == 0:
