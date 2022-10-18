@@ -203,7 +203,7 @@ def main():
                         if not download_dir.exists():
                             os.system('cls' if os.name == 'nt' else 'clear')
                             print(Fore.RED + "ERROR" + Style.RESET_ALL + 
-                                  f": Unable to find specified path '{download_dir}'.")
+                                  f": Unable to find specified path '{download_dir}'.", end=" ")
                             try:
                                 if from_json_download == True:
                                     print("Specify an ABSOLUTE path or check your settings.json file if you're using it.")
@@ -327,14 +327,20 @@ def main():
                     file_dir = Path(settings["upload_path"])
                     from_json_upload = True
                 else:
-                    print("\nSpecify the absolute path of the file to be uploaded.")
+                    print("\nSpecify the absolute path of the file to be uploaded, or...")
+                    print("// A = Abort.")
                     print(Fore.YELLOW + "WARNING" + Style.RESET_ALL + 
-                          ": If the file is a directory, it will be zipped before uploading")
+                        ": If the file is a directory, it will be zipped before uploading.")
                     # Copying file paths from Windows sometimes adds a invisible
                     # character "u+202a". Strip("\u202a") removes it from the beggining of the
                     # file_dir string path.
-                    file_dir = Path(input("=> ").strip("\u202a").strip())
-                    
+                    file_dir = input("=> ").strip("\u202a").strip()
+                        
+                    if file_dir == "A":
+                        break
+                    else:
+                        file_dir = Path(file_dir)
+                
                 if file_dir.exists() and file_dir != (WindowsPath(".") if os.name == "nt" else PosixPath(".")):
                     if file_dir.is_dir():
                         # Function returns the .zip file name, path, metadata and a
@@ -360,6 +366,10 @@ def main():
                         pass
                     print("Specify a ABSOLUTE path.")
                     continue
+            
+            # Handles abort operation for upload mode.
+            if file_dir == "A":
+                continue
             
             file_size = file_dir.stat().st_size 
             print("\nTo be uploaded:")
@@ -400,26 +410,32 @@ def main():
                 # as the local file, in google drive.
                 elif len(search_results) > 0 and drive_filename == local_filename:
                     upload_choice = None
-                    while upload_choice not in ["Y", "C", "A"]:
+                    while upload_choice not in ["RP", "RE", "A"]:
                         print(Fore.YELLOW + "WARNING" + Style.RESET_ALL + ": File already existis in Google Drive. Press:")
-                        print("// Y = Replace file")
-                        print(f"// C = Keep both files (File will renamed to \"Copy of {file_metadata['name']}\"")
+                        print("// RP = Replace file")
+                        print(f"// RE = Keep both files (File will renamed to \"Copy of {file_metadata['name']}\"")
                         print("// A = Abort operation")
                         upload_choice = input("=> ").upper().strip()
 
-                        if upload_choice not in ["Y", "C", "A"]:
+                        if upload_choice not in ["RP", "RE", "A"]:
                             print("\n" + Fore.RED + "ERROR" + Style.RESET_ALL + 
                                   f": {upload_choice} is not a valid choice.\n")
-                        elif upload_choice == "Y":
-                            request = drive.files().update(fileId=file_id, body=file_metadata, media_body=file)  
+                            continue
+                        else:
                             break
-                        elif upload_choice == "C":
-                            request = systems.create_gdrive_copy(file_metadata, drive, drive_filename, file)
-                            break
+                        
                     if upload_choice == "A":
                         os.system('cls' if os.name == 'nt' else 'clear')
                         continue
-            
+                    
+                    elif upload_choice == "RP":
+                        request = drive.files().update(fileId=file_id, body=file_metadata, media_body=file)  
+                        break
+                    
+                    else:
+                        request = systems.create_gdrive_copy(file_metadata, drive, drive_filename, file)
+                        break
+                    
                 systems.upload_file(file_size, request)
                 print("\nUpload Completed Successfully!")
                 
@@ -462,9 +478,9 @@ def main():
                 print(Fore.YELLOW + "WARNING" + Style.RESET_ALL +
                       ": Listing folders present in Google Drive's 'root' directory and folders shared with the user.")
             while True:    
-                folder_number = input("\nSelect a folder number to calculate it's size, or...\n"
-                                    "// A = Abort operation\n\n"
-                                    "=> ").strip().upper()
+                print("Select a folder number to calculate it's size, or...")
+                print("// A = Abort operation")
+                folder_number = input("=> ").strip().upper()
     
                 if folder_number == "A":
                     os.system('cls' if os.name == 'nt' else 'clear')
@@ -488,7 +504,6 @@ def main():
                 systems.print_file_stats(folder_stats=folder_stats, folder_mode=True)                                    
         print("=" * terminal_size)
     drive.close() 
-         
+ 
 if __name__ == "__main__":
     main()
-

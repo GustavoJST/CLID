@@ -93,12 +93,11 @@ def extract_file(zipfile_path, extract_folder_path):
                 folder_name = extract_folder_path.name.strip(f"({counter - 1})")
                 extract_folder_path = Path(f"{path}/{folder_name}({counter})")
             print(Fore.GREEN + "Done!\n" + Style.RESET_ALL)
-    
-    
+      
     with ZipFile(zipfile_path, "r", allowZip64=True) as zfile:
         total_size = sum(zinfo.file_size for zinfo in zfile.filelist) 
         progress_bar = load_progress_bar(description="Extracting", total_file_size=total_size, folder_mode=True)
-               
+        
         for item in zfile.infolist():
             """ Duct tape fix for a problem I spent days trying to solve, but didn't manage to 
             get a good solution. Here's the problem:
@@ -127,15 +126,15 @@ def extract_file(zipfile_path, extract_folder_path):
             changes in the code below may be necessary. Let me know if you have a better
             way to fix this (please, as this solution is really ugly!).
             
-            If you are reading this after Python 3.11 has been released, ZipFile added a 
-            'metadata_encoding' argument in the ZipFile constructor, so maybe that can fix
+            If you're reading this after Python 3.11 has been released, ZipFile added a 
+            'metadata_encoding' argument in the ZipFile constructor. Maybe that can fix
             the encoding problem. """ 
             item.filename = item.filename.replace("╞","ã").replace("Σ","õ")
             progress_bar.set_postfix({"File": item.filename.rsplit("/", 1)[-1]}, refresh=True)
             zfile.extract(item, extract_folder_path)
             progress_bar.update(item.file_size)
     progress_bar.close()
-     
+
 def convert_filesize(size_bytes):
     size_bytes = int(size_bytes)
     if size_bytes == 0:
@@ -275,11 +274,11 @@ def check_download_dir(file_name, download_dir):
             if Path.joinpath(download_dir, file_name).exists():
                 print("\n" + Fore.YELLOW + "WARNING" + Style.RESET_ALL + 
                       f": File '{file_name}' is already present in '{download_dir}'.")
-                print("// S = Replace file.")
-                print("// C = Download as copy.")
+                print("// RP = Replace file.")
+                print("// RE = Download as copy.")
                 choice = input("=> ").strip().upper()
 
-                if choice != "S" and choice != "C":
+                if choice != "RE" and choice != "RP":
                     os.system('cls' if os.name == 'nt' else 'clear')
                     print(Fore.RED + "ERROR" + Style.RESET_ALL +f": {choice} is not a valid choice.\n")
 
@@ -340,7 +339,7 @@ class DownloadSystem:
     # Handles both single file downloads (as long as it's not Google Workspace type) and
     # folder file downloads.
     def download_file(self, drive, directory, file_info):
-        # get handles google apps script type of file,
+        # 'get' handles google apps script type of file,
         # as it's downloadable but API doesn't return a file size.
         file_size = int(file_info.get("size", 0))
         file_path = Path.joinpath(directory, file_info["name"])
