@@ -388,9 +388,11 @@ class DownloadSystem:
             if page_token is None:
                 break
         for file in search_results:
-            # TODO: Fazer check de caractere aqui
-            #if file["name"] in 
-            
+            # Checks and replace invalid characters in file name
+            for char in file["name"]:
+                if char in constants.INVALID_FILENAME_CHARACTERS:
+                    file["name"] = file["name"].replace(char, "_")
+        
             if file["mimeType"] == "application/vnd.google-apps.folder":
                 # Precisa adicionar self nas chamadas ou apenas na definição?
                 self.get_files(folder_id=file["id"], 

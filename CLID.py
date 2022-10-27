@@ -283,12 +283,17 @@ def main():
                     continue
                 
                 # Handles ordinary files (files that aren't Google Workspace type).
-                else:
+                else:      
+                    for char in file_info["name"]:
+                        if char in constants.INVALID_FILENAME_CHARACTERS:
+                            file_info["name"] = file_info["name"].replace(char, "_")
+                            
                     if Path.joinpath(download_dir, file_info["name"]).exists():
                         file_info["name"] = systems.prompt_duplicate_file(download_dir, file_info["name"])
                     print("\nTo be downloaded:")
                     systems.print_file_stats(file_info["name"], file_info["size"])
                     progress_bar = systems.load_progress_bar("Downloading", file_info["size"])
+                    
                     file_downloader = DownloadSystem(progress_bar=progress_bar)
                     file_downloader.download_file(drive, download_dir, file_info)
                     progress_bar.close()

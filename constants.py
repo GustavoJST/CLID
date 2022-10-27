@@ -66,3 +66,5 @@ UNSUPPORTED_MIMETYPES = ["application/vnd.google-apps.form",
                         "application/vnd.google-apps.site",
                         "application/vnd.google-apps.shortcut",
                         "application/vnd.google-apps.drive-sdk"]
+
+INVALID_FILENAME_CHARACTERS = ["\\", "/", "?", ":", "*", "<", ">" "|", "\""]
