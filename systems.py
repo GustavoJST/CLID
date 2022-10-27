@@ -1,140 +1,226 @@
 import requests
 import constants
 import io
-import os
+import os, stat
 import math
 import zipfile
+import json
+import tarfile
 from zipfile import ZipFile
 from tqdm import tqdm
 from pathlib import Path
 from googleapiclient.http import MediaIoBaseDownload
 from time import sleep
-from colorama import init
-from colorama import Fore, Style
+from colorama import init, Fore, Style
 init()  # Colorama init
 
-def prompt_duplicate_file(file_path, mode:str):
+with open("settings.json", "r") as settings_json:
+    settings = json.load(settings_json)
+
+def prompt_duplicate_file(path, local_filename, mode=None):
     while True:
         if mode == "compress":
             print("\n" + Fore.YELLOW + "WARNING" + Style.RESET_ALL + 
-                f": Zip file '{file_path}' already exists.")
-            print("// RN = Rename file (Adds a number next to it).")
+                f": Compressed file '{local_filename}' already exists in '{path}'.")
             print("// RP = Replace file.")
+            print("// RN = Rename file (Adds a number next to it).")
+    
+        elif mode == "extract":
+            print("\n" + Fore.YELLOW + "WARNING" + Style.RESET_ALL + 
+                f": Extraction folder '{local_filename}' already exists in '{path}'.")
+            print("// RP = Replace folder.")
+            print("// RN = Rename folder (Adds a number next to it).")
+            
         else:
             print("\n" + Fore.YELLOW + "WARNING" + Style.RESET_ALL + 
-                f": Extraction folder '{file_path}' already exists.")
-            print("// RN = Rename folder (Adds a number next to it).")
-            print("// RP = Replace folder.")
+                f": File '{local_filename}' already exists in '{path}'.")
+            print("// RP = Replace file.")
+            print("// RN = Rename file (Adds a number next to it).")
+            
         choice = input("=> ").strip().upper()
         
         if choice == "RN" or choice == "RP":
             break
+        
         else:
             os.system('cls' if os.name == 'nt' else 'clear')
             print("\n" + Fore.RED + "ERROR" + Style.RESET_ALL + ": Choose a valid option!")
             continue
-    return choice
-    
+        
+    if choice == "RN":
+        counter = 0
+        print("\nRenaming file...", end="")
+        file_path = Path.joinpath(path, local_filename)
+        while file_path.exists():
+            counter += 1 
+      
+            if mode == "extract":
+                folder_name = local_filename.strip(f"({counter - 1})")
+                file_path = Path(f"{path}/{folder_name}({counter})")
+               
+            else:
+                suffix = Path(local_filename).suffixes
+                joined_suffixes = "".join(suffix[0:])
+                pure_filename = local_filename.removesuffix(joined_suffixes).strip(f"({counter - 1})")
+                if mode == "compress":
+                    file_path = Path(f"{path}/{pure_filename}({counter})").with_suffix(settings["preferred_compression_format"])
+                else:
+                    file_path = Path(f"{path}/{pure_filename}({counter})").with_suffix(joined_suffixes)
+            
+            # TODO: Este else ta igual ao mode "compress", talvez da pra usar os dois pra mesma coisa e mudar só a ultima parte?  
+            """ else:
+                suffix = Path(local_filename).suffixes
+                joined_suffixes = "".join(suffix[0:])
+                pure_filename = local_filename.removesuffix(joined_suffixes).strip(f"({counter - 1})")
+                file_path = Path(f"{path}/{pure_filename}({counter})").with_suffix(joined_suffixes) """
+        local_filename = file_path.name        
+        print(Fore.GREEN + "Done!" + Style.RESET_ALL)     
+    return local_filename
+        
 def compact_directory(file_dir): 
     print("\nFile identified as a directory. Starting compression process...", end="")
     sleep(0.5)
-    target_path = Path(file_dir).with_suffix(".zip")
+    target_path = Path(file_dir).with_suffix(settings["preferred_compression_format"])
     local_filename = target_path.name
     folder_size = sum(file.stat().st_size for file in file_dir.rglob('*') if file.is_file())
     print(Fore.GREEN + "Done!" + Style.RESET_ALL)
     
     if target_path.exists():
-        choice = prompt_duplicate_file(target_path, "compress")
+        local_filename = prompt_duplicate_file(Path(target_path).parent, local_filename, "compress")
+        target_path = target_path.with_name(local_filename)
+        
+    progress_bar = load_progress_bar(description="Compressing", 
+                                     total_file_size=folder_size, 
+                                     folder_mode=True)
       
-        if choice == "RN":
-            counter = 0
-            print("\nRenaming file...", end="")
-            path = target_path.parent.absolute() 
-            while target_path.exists():
-                counter += 1
-                pure_filename = target_path.stem.strip(f"({counter - 1})")
-                target_path = Path(f"{path}/{pure_filename}({counter})").with_suffix(".zip")
-            local_filename = target_path.name
-            print(Fore.GREEN + "Done!\n" + Style.RESET_ALL)
-          
-    with ZipFile(target_path, "w", zipfile.ZIP_DEFLATED, allowZip64=True) as zfile:
-        progress_bar = load_progress_bar(description="Compressing", 
-                                         total_file_size=folder_size, 
-                                         folder_mode=True)
-        for item in file_dir.rglob("*"):       
-            current_file_path = str(item.relative_to(file_dir))
-            progress_bar.set_postfix({"File": item.name}, refresh=True)
-            if item.is_file():
-                with open(item, "rb") as input_file, zfile.open(current_file_path, "w") as output_file:
-                    while True:
-                        chunk = input_file.read(524288)
-                        progress_bar.update(len(chunk))
-                        if not chunk:
-                           break
-                        output_file.write(chunk)
-            else:
-                zfile.write(item, item.relative_to(file_dir))
+    if settings["preferred_compression_format"] == ".tar.gz":
+        # Mudar compresslevel para 5 para ver se diminui um pouco o tempo de compactação. GarrsMod demorou +20min
+        with tarfile.open(target_path,"w:gz", encoding="utf-8")  as tar:    
+            for item in file_dir.rglob("*"):
+                progress_bar.set_postfix({"File": item.name}, refresh=True)
+                tar.add(item, item.relative_to(file_dir), recursive=False)
+                if item.is_file():
+                    progress_bar.update(item.stat().st_size)
+                    
+        file_metadata = {"name" : local_filename, 
+                         "mimetype" : "application/gzip"}
+    
+    elif settings["preferred_compression_format"] == ".zip":     
+        with ZipFile(target_path, "w", zipfile.ZIP_DEFLATED, allowZip64=True) as zfile:
+            print()
+            for item in file_dir.rglob("*"):       
+                current_file_path = str(item.relative_to(file_dir))
+                progress_bar.set_postfix({"File": item.name}, refresh=True)
+                if item.is_file():
+                    with open(item, "rb") as input_file, zfile.open(current_file_path, "w") as output_file:
+                        while True:
+                            chunk = input_file.read(1048576)
+                            progress_bar.update(len(chunk))
+                            if not chunk:
+                                break
+                            output_file.write(chunk)
+                else:
+                    zfile.write(item, item.relative_to(file_dir)) 
+                    
+        file_metadata = {"name" : local_filename, 
+                         "mimetype" : "application/zip"}
+    else:
+        print("\n" + Fore.RED + "ERROR" + Style.RESET_ALL + 
+              ": Invalid 'preferred_compression_format' setting in settings.json. Rename it to a valid option.")
+        input("\nPress ENTER to exit.")
+        exit()
             
-    file_metadata = {"name" : local_filename, 
-                     "mimetype" : "application/zip"}
     file_created = True
     return target_path, local_filename, file_metadata, file_created
 
-def extract_file(zipfile_path, extract_folder_path): 
+def extract_file(compressed_file_path, extract_folder_path): 
     if extract_folder_path.exists():
-        choice = prompt_duplicate_file(extract_folder_path, "extract")
-        
-        if choice == "RN":
-            counter = 0
-            print("\nRenaming file...", end="")
-            path = extract_folder_path.parent.absolute()
-            while extract_folder_path.exists():
-                counter += 1
-                folder_name = extract_folder_path.name.strip(f"({counter - 1})")
-                extract_folder_path = Path(f"{path}/{folder_name}({counter})")
+        extract_folder_path = extract_folder_path.with_name(prompt_duplicate_file(extract_folder_path.parent, 
+                                                                                  extract_folder_path.name, 
+                                                                                  "extract"))
+    if compressed_file_path.suffix == ".zip":
+        with ZipFile(compressed_file_path, "r", allowZip64=True) as zfile:
+            print("\nStarting extraction process...", end="")
+            total_size = sum(zinfo.file_size for zinfo in zfile.filelist)
             print(Fore.GREEN + "Done!\n" + Style.RESET_ALL)
-      
-    with ZipFile(zipfile_path, "r", allowZip64=True) as zfile:
-        total_size = sum(zinfo.file_size for zinfo in zfile.filelist) 
-        progress_bar = load_progress_bar(description="Extracting", total_file_size=total_size, folder_mode=True)
-        
-        for item in zfile.infolist():
-            """ Duct tape fix for a problem I spent days trying to solve, but didn't manage to 
-            get a good solution. Here's the problem:
+            progress_bar = load_progress_bar(description="Extracting", total_file_size=total_size, folder_mode=True)
             
-            As of Python 3.10, the ZipFile module only accepts two encoding formats when it 
-            comes to filenames in a zip file. These are 'cp437' and 'utf-8'. How ZipFile switches 
-            between these two encoding types is a mystery to me, but from my testing, if you zip 
-            a file using ZipFile, and it has utf-8 characters inside, then it will use utf-8 
-            encoding, otherwise, it will use cp437. ZipFile will also use cp437 when extracting 
-            zip files not created by ZipFile, even if they have utf-8 chars. So if you want to
-            extract a file using ZipFile utf-8 encoding for file names, you'll be only able do 
-            that if you zip (using ZipFile) a file that has utf-8 characters, otherwise, you better 
-            hope all the characters in your language are in the cp437 char table.
+            for item in zfile.infolist():
+                """ Duct tape fix for a problem I spent days trying to solve, but didn't manage to 
+                get a good solution. Here's the problem:
+                
+                As of Python 3.10, the ZipFile module only accepts two encoding formats when it 
+                comes to filenames in a zip file. These are 'cp437' and 'utf-8'. How ZipFile switches 
+                between these two encoding types is a mystery to me, but from my testing, if you zip 
+                a file using ZipFile, and it has utf-8 characters inside, then it will use utf-8 
+                encoding, otherwise, it will use cp437. ZipFile will also use cp437 when extracting 
+                zip files not created by ZipFile, even if they have utf-8 chars. So if you want to
+                extract a file using ZipFile utf-8 encoding for file names, you'll be only able do 
+                that if you zip (using ZipFile) a file that has utf-8 characters, otherwise, you better 
+                hope all the characters in your language are in the cp437 char table.
+                
+                When reading a filename using cp437, depending on the characters present in the 
+                filename, you will get wrong encoded chars (mojibake). For me, what was supposed 
+                to be 'ã' became '╞' and 'õ' became 'Σ', as this chars are not supported by cp437.
+                
+                This fix is only useful for my native language (pt-BR), as 'ã'/'õ' is used a lot, 
+                and all other characters are covered by cp437. This will be problem if your language 
+                has a lot of characters not covered by cp437. Other fixes I tried was using a module 
+                named 'ftfy', or using a combination of encode/decode methods, but none of them 
+                worked and just returned mojibake.
+                
+                If you are still reading this and plan to use this code on your own project,
+                changes in the code below may be necessary. Let me know if you have a better
+                way to fix this (please, as this solution is really ugly!).
+                
+                If you're reading this after Python 3.11 has been released, ZipFile added a 
+                'metadata_encoding' argument in the ZipFile constructor. Maybe that can fix
+                the encoding problem. """ 
+                item.filename = item.filename.replace("╞","ã").replace("Σ","õ")
+                progress_bar.set_postfix({"File": item.filename.rsplit("/", 1)[-1]}, refresh=True)
+                zfile.extract(item, extract_folder_path)
+                progress_bar.update(item.file_size)
+        progress_bar.close()
+    
+    else:
+        with tarfile.open(compressed_file_path, "r:*", encoding="utf-8") as tar:
+            print("\nStarting extraction process...", end="")
+            total_size = sum(member.size for member in tar)
+            print(Fore.GREEN + "Done!\n" + Style.RESET_ALL)       
+            progress_bar = load_progress_bar(description="Extracting", 
+                                                total_file_size=total_size, 
+                                                folder_mode=True)
+            try:
+                Path(extract_folder_path).mkdir()
+            except:
+                pass
             
-            When reading a filename using cp437, depending on the characters present in the 
-            filename, you will get wrong encoded chars (mojibake). For me, what was supposed 
-            to be 'ã' became '╞' and 'õ' became 'Σ', as this chars are not supported by cp437.
+            for member in tar:
+                progress_bar.set_postfix({"File": Path(member.name).name}, refresh=True)
             
-            This fix is only useful for my native language (pt-BR), as 'ã'/'õ' is used a lot, 
-            and all other characters are covered by cp437. This will be problem if your language 
-            has a lot of characters not covered by cp437. Other fixes I tried was using a module 
-            named 'ftfy', or using a combination of encode/decode methods, but none of them 
-            worked and just returned mojibake.
-            
-            If you are still reading this and plan to use this code on your own project,
-            changes in the code below may be necessary. Let me know if you have a better
-            way to fix this (please, as this solution is really ugly!).
-            
-            If you're reading this after Python 3.11 has been released, ZipFile added a 
-            'metadata_encoding' argument in the ZipFile constructor. Maybe that can fix
-            the encoding problem. """ 
-            item.filename = item.filename.replace("╞","ã").replace("Σ","õ")
-            progress_bar.set_postfix({"File": item.filename.rsplit("/", 1)[-1]}, refresh=True)
-            zfile.extract(item, extract_folder_path)
-            progress_bar.update(item.file_size)
-    progress_bar.close()
-
+                if member.isfile():
+                    destination = Path(extract_folder_path) / member.name 
+                    if not destination.parent.exists():
+                        destination.parent.mkdir(parents=True, exist_ok=True)      
+                    
+                    try: 
+                        tfobj, out, perms_changed = tar.extractfile(member), open(destination, "wb"), False   
+                    # Allows extraction of read-only files.
+                    except PermissionError:
+                        os.chmod(destination, stat.S_IWRITE)
+                        tfobj, out, perms_changed = tar.extractfile(member), open(destination, "wb"), True
+                
+                    while True:
+                        chunk = tfobj.read(1048576)
+                        if not chunk:
+                            break
+                        out.write(chunk)
+                        progress_bar.update(len(chunk))
+                    tfobj.close()
+                    out.close()
+                    if perms_changed:
+                        os.chmod(destination, stat.S_IREAD)
+                    
 def convert_filesize(size_bytes):
     size_bytes = int(size_bytes)
     if size_bytes == 0:
@@ -147,13 +233,8 @@ def convert_filesize(size_bytes):
     size_converted = round(size_bytes / unit_bytesize, 2)
     return f"{size_converted} {size_unit[i]}"
 
-def create_gdrive_copy(file_metadata, drive, drive_filename, file):
-    file_metadata["name"] = f"Copy of {drive_filename}"
-    request = drive.files().create(body=file_metadata, media_body=file)
-    return request
-
 def upload_file(file_size, request):
-    print("\nStarting upload...", end="")
+    print("Starting upload...", end="")
     sleep(1)
     print(Fore.GREEN + "Done!" + Style.RESET_ALL)
     progress_bar = load_progress_bar("Uploading", file_size) 
@@ -176,7 +257,7 @@ def upload_file(file_size, request):
 
 def remove_localfile(file_dir):
     if file_dir.exists:
-        print("\nRemoving created ZIP file from system...", end="")
+        print("\nRemoving the compressed file from system...", end="")
         sleep(1)
         file_dir.unlink()
         print(Fore.GREEN + "Done!" + Style.RESET_ALL)
@@ -269,42 +350,21 @@ def prepare_directory(download_dir, gdrive_folder_name):
         sleep(0.5)
         exit()
 
-def check_download_dir(file_name, download_dir):
-        while True:
-            if Path.joinpath(download_dir, file_name).exists():
-                print("\n" + Fore.YELLOW + "WARNING" + Style.RESET_ALL + 
-                      f": File '{file_name}' is already present in '{download_dir}'.")
-                print("// RP = Replace file.")
-                print("// RE = Download as copy.")
-                choice = input("=> ").strip().upper()
-
-                if choice != "RE" and choice != "RP":
-                    os.system('cls' if os.name == 'nt' else 'clear')
-                    print(Fore.RED + "ERROR" + Style.RESET_ALL +f": {choice} is not a valid choice.\n")
-
-                elif choice == "S":
-                        return file_name
-
-                else:
-                    return  f"Copy of {file_name}"
-            # Default case
-            else:
-                return file_name
 
 def load_progress_bar(description, total_file_size=None, folder_mode=False):
     if folder_mode == False:
-        bar_format = "{desc}: {percentage:3.1f}%|{bar}| {n_fmt}B/{total_fmt}B [{elapsed}<{remaining}, {rate_fmt}]"
+        bar_format = "{desc}: {percentage:3.1f}%|{bar}| {n_fmt}B/{total_fmt}B [{elapsed}<{remaining}, {rate_fmt}]"  
     elif folder_mode == True and total_file_size is None:
-        bar_format = "{desc}: {n_fmt}B/Unknown [{elapsed}, {rate_fmt}]{postfix:<70}"    
+        bar_format = "{desc}: {n_fmt}B/Unknown [{elapsed}, {rate_fmt}]{postfix:<60}"     
     else:
-       bar_format = "{desc}: {percentage:3.1f}%|{bar}| {n_fmt}B/{total_fmt}B [{elapsed}<{remaining}, {rate_fmt}]{postfix:<70}"
-        
+       bar_format = "{desc}: {percentage:3.1f}%|{bar}| {n_fmt}B/{total_fmt}B [{elapsed}<{remaining}, {rate_fmt}]{postfix:<45}"
     if total_file_size is None:
         return tqdm(desc=description, miniters=1, bar_format=bar_format, 
                     unit="B", unit_scale=True, unit_divisor=1024, dynamic_ncols=True)
     else:   
         return tqdm(total=int(total_file_size), desc=description, miniters=1, bar_format=bar_format, 
                     unit="B", unit_scale=True, unit_divisor=1024, dynamic_ncols=True)
+       
 class DownloadSystem:
     total_skipped = 0
     skipped_files = []
@@ -328,6 +388,9 @@ class DownloadSystem:
             if page_token is None:
                 break
         for file in search_results:
+            # TODO: Fazer check de caractere aqui
+            #if file["name"] in 
+            
             if file["mimeType"] == "application/vnd.google-apps.folder":
                 # Precisa adicionar self nas chamadas ou apenas na definição?
                 self.get_files(folder_id=file["id"], 
@@ -363,13 +426,14 @@ class DownloadSystem:
                                                  "mimeType": file_info["mimeType"]})
             return
 
-        # Else handles ordinary files that already have an extension in their name.
+        # Else handles ordinary files.
         else:
             self.progress_bar.set_postfix({"File": file_info["name"]}, refresh=True)
             request = drive.files().get_media(fileId=file_info["id"])
-            file = io.FileIO(f"{file_path}", "w")
+            file = io.FileIO(f"{file_path}", "wb")
         
         downloader = MediaIoBaseDownload(file, request, chunksize=constants.CHUNK_SIZE)
+        
         done = False
         while done == False:
             status, done = downloader.next_chunk()
@@ -429,7 +493,8 @@ class DownloadSystem:
                 print(Fore.RED + "ERROR" + Style.RESET_ALL + f": {choosed_format} is not a valid format choice.\n")
                 continue
         
-        file_name = check_download_dir(f"{file_info['name']}{format_info['extension']}", download_dir)
+        #tmp_path = check_download_dir(f"{file_info['name']}{format_info['extension']}", download_dir)
+        file_name = prompt_duplicate_file(download_dir, f"{file_info['name']}{format_info['extension']}")
         file = io.FileIO(f"{Path.joinpath(download_dir, file_name)}", "wb")
         
         # Google Drive export() method has a 10MB file size limit.

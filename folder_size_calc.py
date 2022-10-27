@@ -54,7 +54,7 @@ class GoogleDriveSizeCalculate:
             elif self.timeout == True:
                 return "Timeout"
             else:              
-                return {"File": name,
+                return {"Folder name": name,
                         "Size": convert_filesize(self.total_bytes),
                         "Files": self.total_files,
                         "Folders": self.total_folders,

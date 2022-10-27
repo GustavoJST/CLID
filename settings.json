@@ -1,5 +1,6 @@
 {
     "download_directory": null,
     "upload_path": null,
-    "shared_with_me": true
+    "shared_with_me": false,
+    "preferred_compression_format": ".tar.gz"
 }
