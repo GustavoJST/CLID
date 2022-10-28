@@ -1,4 +1,4 @@
-#!./CLID_env/Scripts/python  
+#!./CLID_env/Scripts/python
 
 """ Pick one of the shebangs below (according to your operating system) 
 and place it on the first line of the script:
@@ -364,7 +364,7 @@ def main():
                         file_dir = "A"
                         break
                     else:
-                        file_dir = Path(file_dir)
+                        file_dir = Path(file_dir).resolve()
                 
                 if file_dir.exists() and file_dir != (WindowsPath(".") if os.name == "nt" else PosixPath(".")):
                     if file_dir.is_dir():
@@ -440,6 +440,8 @@ def main():
                                 break
                             
                         if upload_choice == "A":
+                            systems.remove_localfile(file_dir)
+                            sleep(1)
                             os.system('cls' if os.name == 'nt' else 'clear')
                             continue
                         

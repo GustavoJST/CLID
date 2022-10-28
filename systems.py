@@ -66,13 +66,7 @@ def prompt_duplicate_file(path, local_filename, mode=None):
                     file_path = Path(f"{path}/{pure_filename}({counter})").with_suffix(settings["preferred_compression_format"])
                 else:
                     file_path = Path(f"{path}/{pure_filename}({counter})").with_suffix(joined_suffixes)
-            
-            # TODO: Este else ta igual ao mode "compress", talvez da pra usar os dois pra mesma coisa e mudar só a ultima parte?  
-            """ else:
-                suffix = Path(local_filename).suffixes
-                joined_suffixes = "".join(suffix[0:])
-                pure_filename = local_filename.removesuffix(joined_suffixes).strip(f"({counter - 1})")
-                file_path = Path(f"{path}/{pure_filename}({counter})").with_suffix(joined_suffixes) """
+
         local_filename = file_path.name        
         print(Fore.GREEN + "Done!" + Style.RESET_ALL)     
     return local_filename
@@ -95,7 +89,7 @@ def compact_directory(file_dir):
       
     if settings["preferred_compression_format"] == ".tar.gz":
         # Mudar compresslevel para 5 para ver se diminui um pouco o tempo de compactação. GarrsMod demorou +20min
-        with tarfile.open(target_path,"w:gz", encoding="utf-8")  as tar:    
+        with tarfile.open(target_path,"w:gz", encoding="utf-8", compresslevel=6) as tar:
             for item in file_dir.rglob("*"):
                 progress_bar.set_postfix({"File": item.name}, refresh=True)
                 tar.add(item, item.relative_to(file_dir), recursive=False)
