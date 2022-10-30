@@ -440,6 +440,7 @@ def main():
                                 break
                             
                         if upload_choice == "A":
+                            file.stream().close()
                             systems.remove_localfile(file_dir)
                             sleep(1)
                             os.system('cls' if os.name == 'nt' else 'clear')
