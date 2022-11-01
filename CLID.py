@@ -66,7 +66,12 @@ def main():
         terminal_size = os.get_terminal_size().columns - 1
         DownloadSystem.total_skipped = 0
         DownloadSystem.skipped_files = []
-        print ("\n// D = Download file \n" 
+        
+        with open("ascii-logo.txt", "r") as logo:
+            for line in logo:
+                print(line.rstrip())
+
+        print ("\n// D = Download file \n"
                "// C = Upload file \n"
                "// S = Calculate folder size \n"
                "// E = Exit \n")
