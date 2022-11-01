@@ -68,8 +68,6 @@ Se você precisar mover a pasta do CLID para outro lugar em seu computador, dele
 
 # Guia do usuário
 ## Downloading
-<hr>
-
 Fazer o download de um arquivo/pasta é muito simples:
 
 1. A partir do menu, digite `D` para entrar no modo de download.
@@ -78,9 +76,8 @@ Fazer o download de um arquivo/pasta é muito simples:
 4. Escolha um diretório de download... 
 <br>
     
-E é isso! Se um arquivo estiver comprimido, você terá a opção de extrair o arquivo depois de baixa-lo. Os formatos suportados para a extração são `.zip`, `.tar.gz` e `.tar`. <br> <br>
-
-(gif demonstrando o download aqui??) <br><br>
+E é isso! Se um arquivo estiver comprimido, você terá a opção de extrair o arquivo depois de baixa-lo. Os formatos suportados para a extração são `.zip`, `.tar.gz` e `.tar`. 
+<br>
 
 Embora o processo de download seja fácil, tem algumas coisas importantes que você precisa ter em mente: <br>
 
@@ -106,12 +103,9 @@ Em conclusão, tentar fazer download de arquivos não suportados irá **cancelar
 | Google Forms                     | :x: Não suportado :x:               | :x: Não suportado :x: |
 | Google My Maps                   | :x: Não suportado :x:               | :x: Não suportado :x: |
 
-<hr><br> 
-
+<hr> 
 
 ## Uploading
-<hr>
-
 Fazer upload de arquivos com o CLID também é muito simples:
 1. A partir do menu, digite `C` para entrar no modo de upload.
 2. Digite o **caminho absoluto** (absolute path) do arquivo que você quer fazer upload.
@@ -121,8 +115,6 @@ Depois dos dois passos mencionados acima, o processo de upload irá começar. Se
 CLID também irá checar se o arquivo já está presente no seu Drive, e se estiver, irá lhe dar uma opção para substituir o arquivo ou manter os dois arquivos, renomeando o arquivo que você esta fazendo upload para algo como `arquivo(1).zip`.<br><br>
 
 ## Calculando tamanho de uma pasta
-<hr>
-
 CLID também pode calculcar o tamanho de uma pasta do Drive. Ele faz isso iterando sobre todos os arquivos em sua pasta, pegando o tamanho de cada um e somando a um total. Ao final da operação, você terá um resumo com informações sobre o nome da pasta, tamanho, número total de arquivos, pastas, arquivos do Google Workspace e arquivos não suportados. <br>
 
 Esse processo pode demorar para pastas com muitas subpastas dentro, Quanto mais **subpastas** uma pasta tiver, maior será o tempo que levará para calcular o seu tamanho.
@@ -131,8 +123,6 @@ Esse processo pode demorar para pastas com muitas subpastas dentro, Quanto mais 
 <br><br>
 
 ## Configurações e preferências
-<hr>
-
 CLID possui um arquivo `settings.json` que permite ao usuário mudar como o CLID se comporta. **Para qualquer mudança feita em `settings.json` ter efeito, é necessário reiniciar o CLID**. A seguir, uma explicação do que cada configuração faz: <br><br>
 
 ### download_directory (string/null) <!-- omit in toc -->

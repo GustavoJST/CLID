@@ -2,6 +2,7 @@
 CLID (abreviação para CLI Drive) é um simples cliente CLI feito para interagir com o Google Drive. Use o CLID para fazer o download/upload de arquivos e pastas, ou calcular o tamanho de um pasta presente no seu Google Drive, tudo diretamente do terminal. 
 
 CLID foi feito usando a [Google API Python client library](https://github.com/googleapis/google-api-python-client) para a comunicação API com o Google Drive, [tqdm](https://github.com/tqdm/tqdm) para exibir as barras de progresso e [gdrive_folder_size](https://github.com/XtremeRahul/gdrive_folder_size) para ajudar no cálculo do tamanho de pastas do Google Drive.
+<br><br>
 
 <hr>
 
@@ -11,7 +12,6 @@ Sumário
 - [Limitações](#limitações)
 
 <hr>
-<br>
 
 # Sobre o projeto
 CLID é um simples programa cujo o principal objetivo é fazer o download/upload de arquivos e pastas, além de calcular o tamanho de pastas do Google Drive, usando apenas o terminal.

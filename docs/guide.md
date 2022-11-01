@@ -13,7 +13,6 @@
   - [Settings and preferences](#settings-and-preferences)
 
 <hr>
-
 <br>
 
 # Quickstart
@@ -68,8 +67,6 @@ If you need to move the CLID folder another place in your system, delete `CLID_e
 
 # User guide
 ## Downloading
-<hr>
-
 Downloading a file/folder is really easy:
 
 1. From the menu, type `D` to enter the download mode. 
@@ -77,8 +74,8 @@ Downloading a file/folder is really easy:
 3. Choose the number of the file you want to download
 4. Choose a download directory... <br>
     
-And that's it! If the file is compressed, you'll get a option to extract it after the download. Supported formats for extraction are `.zip`, `.tar.gz` and `.tar`.  <br> <br>
-(gif demonstrando o download aqui??) <br><br>
+And that's it! If the file is compressed, you'll get a option to extract it after the download. Supported formats for extraction are `.zip`, `.tar.gz` and `.tar`.  
+<br>
 Although the download process is simple, there are some important things you need to keep in mind: <br>
 
 ### Google Workspace file/folder download <!-- omit in toc -->
@@ -102,12 +99,9 @@ In conclusion, trying to download a unsupported file will **cancel** the downloa
 | Google Forms                  | :x: Not supported :x:           | :x: Not supported :x: |
 | Google My Maps                | :x: Not supported :x:           | :x: Not supported :x: |
 
-<hr><br> 
-
+<hr> 
 
 ## Uploading
-<hr>
-
 Uploading a file with CLID is also very simple:
 1. From the menu, type `C` to enter the upload mode.
 2. Specify the **absolute path** of the file you want to upload.
@@ -117,8 +111,6 @@ After the two steps mentioned above, the upload process will begin. If the file 
 CLID also checks if the file is already present in your Drive, and if it is, it gives you the option to replace the file or to keep both files, renaming the file you're uploading to something like `file(1).zip`. <br><br>
 
 ## Calculating folder size
-<hr>
-
 CLID can also calculate the folder size of a Drive folder. It does that by iterating over all files present in the folder, getting their size and adding to a total. At the end of the operation, you'll get a summary with information about the folder's name, size, total number of files, folders, Google Workspace files and unsupported files.<br>
 
 This process can take a while for folder with a lot of subfolders inside. The more **subfolders** a folder has, the longer it will take to calculate its size.
@@ -128,8 +120,6 @@ This process can take a while for folder with a lot of subfolders inside. The mo
 <br><br>
 
 ## Settings and preferences
-<hr>
-
 CLID has a  `settings.json` file that lets the user change how CLID behaves.  **For any change you made in `settings.json` to take effect, you'll need to restart CLID**. Here's a rundown of what each setting do: <br><br>
 
 ### download_directory (string/null) <!-- omit in toc -->

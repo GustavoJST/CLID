@@ -17,7 +17,6 @@ Table of contents
 - [Limitations](#limitations)
 
 <hr>
-<br>
 
 # About the project
 CLID is a simple program whose main purpose is to download/upload files and folders, as well as calculating the size of folders, from Google Drive, using only the terminal.
