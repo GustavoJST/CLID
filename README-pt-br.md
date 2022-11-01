@@ -1,22 +1,34 @@
-# CLID <!-- omit in toc -->
-CLID (abreviação para CLI Drive) é um simples cliente CLI feito para interagir com o Google Drive. Use o CLID para fazer o download/upload de arquivos e pastas, ou calcular o tamanho de um pasta presente no seu Google Drive, tudo diretamente do terminal. 
+<img src="banner.gif" width="100%"/>
 
-CLID foi feito usando a [Google API Python client library](https://github.com/googleapis/google-api-python-client) para a comunicação API com o Google Drive, [tqdm](https://github.com/tqdm/tqdm) para exibir as barras de progresso e [gdrive_folder_size](https://github.com/XtremeRahul/gdrive_folder_size) para ajudar no cálculo do tamanho de pastas do Google Drive.
-<br><br>
+<br />
+<div align="center">
+    <h3 align="center">CLID</h3>
 
-<hr>
+Um programa simples, baseado em Python, para fazer download/upload de arquivos e pastas do Google Drive, diretamente do terminal.
 
-Sumário
+Leia a [documentação](docs/guide-pt-BR.md/#sumário) para obter informações sobre como instalar e usar o CLID.
+   
+<a href="https://github.com/gustavojst/CLID/labels/bug">Reportar Bug</a>
+    ·
+<a href="https://github.com/gustavojst/CLID/labels/request">Requisitar uma Feature</a> 
+</div>
+
+<details>
+ <summary>Sumário</summary>
+
 - [Sobre o projeto](#sobre-o-projeto)
-- [Documentação](#documentação)
 - [Limitações](#limitações)
+</details>
+<br>
 
-<hr>
 
 # Sobre o projeto
-CLID é um simples programa cujo o principal objetivo é fazer o download/upload de arquivos e pastas, além de calcular o tamanho de pastas do Google Drive, usando apenas o terminal.
+CLID (abreviação para CLI Drive) é um simples programa cujo o principal objetivo é fazer o download/upload de arquivos e pastas, além de calcular o tamanho de pastas do Google Drive, usando apenas o terminal.
 
-A ideia para projeto surgiu de um problema que eu estava tendo em sincronizar uma pasta entre meu computador desktop e meu notebook que eu uso na faculdade. Eu estava usando o Google Drive para fazer essa sincronização, porém estava ficando bem repetitivo fazer isso todo dia (muitas tarefas pequenas e repetitivas, como abrir o navegador, baixar o arquivo, descomprimir o arquivo, substituir a pasta... já deu pra entender). Então, eu tive a ideia de fazer um programa/script no Python que lidaria com a maioria dessas tarefas chatas, sem nem mesmo eu precisar abrir o navegador.
+CLID foi feito usando a [Google API Python client library](https://github.com/googleapis/google-api-python-client) para a comunicação API com o Google Drive, [tqdm](https://github.com/tqdm/tqdm) para exibir as barras de progresso e [gdrive_folder_size](https://github.com/XtremeRahul/gdrive_folder_size) para ajudar no cálculo do tamanho de pastas do Google Drive.
+
+
+A ideia do projeto surgiu de um problema que eu estava tendo em sincronizar uma pasta entre meu computador desktop e meu notebook que eu uso na faculdade. Eu estava usando o Google Drive para fazer essa sincronização, porém estava ficando bem repetitivo fazer isso todo dia (muitas tarefas pequenas e repetitivas, como abrir o navegador, baixar o arquivo, descomprimir o arquivo, substituir a pasta..., etc). A partir disso, tive a ideia de fazer um programa/script no Python que lidaria com a maioria dessas tarefas chatas, sem nem mesmo eu precisar abrir o navegador.
 <br><br>
 
 ## História legal cara... mas o que ele consegue fazer? <!-- omit in toc -->
@@ -35,10 +47,6 @@ A seguir, uma lista do que o CLID consegue e não consegue fazer:
 - Interagir com o Google Drive em qualquer outra maneira que não seja uma das formas citadas acimas. Isso inclui mover arquivos para outros lugares no Google Drive, compartilhar arquivos/pastas com outros, mudar as configurações de visibilidade de um arquivo, ou qualquer outra ação do Google Drive. 
 - Baixar arquivos/pastas que não estejam na pasta root do Google Drive (Também conhecida como pasta/página principal), com a exceção de arquivos/pastas compartilhadas com o usuário. Você pode, no entanto, baixar uma pasta no diretório raiz, junto com todos os seus arquivos e subpastas (não importanto o quão fundo a pasta seja).
 - Fazer café :( . Ainda...
-<br><br>
-
-# Documentação
-Leia a [documentação](docs/guide-pt-BR.md/#sumário) para obter informações sobre como instalar e usar o CLID.
 <br><br>
 
 # Limitações

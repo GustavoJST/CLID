@@ -103,7 +103,8 @@ Em conclusão, tentar fazer download de arquivos não suportados irá **cancelar
 | Google Forms                     | :x: Não suportado :x:               | :x: Não suportado :x: |
 | Google My Maps                   | :x: Não suportado :x:               | :x: Não suportado :x: |
 
-<hr> 
+<hr><br> 
+
 
 ## Uploading
 Fazer upload de arquivos com o CLID também é muito simples:

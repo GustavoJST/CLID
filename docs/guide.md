@@ -99,9 +99,10 @@ In conclusion, trying to download a unsupported file will **cancel** the downloa
 | Google Forms                  | :x: Not supported :x:           | :x: Not supported :x: |
 | Google My Maps                | :x: Not supported :x:           | :x: Not supported :x: |
 
-<hr> 
+<hr>
 
 ## Uploading
+
 Uploading a file with CLID is also very simple:
 1. From the menu, type `C` to enter the upload mode.
 2. Specify the **absolute path** of the file you want to upload.
