@@ -244,12 +244,11 @@ def main():
                         sleep(0.5)
                         progress_bar = systems.load_progress_bar(description="Downloading", folder_mode=True)
                         folder_downloader = DownloadSystem(access_token=access_token, 
-                                                           progress_bar=progress_bar, 
-                                                           unknown_folder_size=True, 
+                                                           progress_bar=progress_bar,
                                                            folder_mode=True)                   
                     else:
                         print(Fore.GREEN + "Done!" + Style.RESET_ALL)
-                        folder_stats["Archive"] = file_info["name"]
+                        folder_stats["Folder name"] = file_info["name"]
                         print("\nTo be downloaded:") 
                         systems.print_file_stats(folder_stats=folder_stats, folder_mode=True)
                         progress_bar = systems.load_progress_bar("Downloading", folder_stats["Bytes"], folder_mode=True)
@@ -261,7 +260,7 @@ def main():
                     
                     # Fills progress bar in case of exported files that shrank
                     # in size during download.
-                    if progress_bar.n != progress_bar.total:
+                    if progress_bar.total != None and progress_bar.n != progress_bar.total:
                         progress_bar.n = progress_bar.total
                         progress_bar.refresh()
                     progress_bar.close()

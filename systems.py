@@ -7,6 +7,7 @@ import zipfile
 import json
 import tarfile
 from zipfile import ZipFile
+from typing import Literal, Optional
 from tqdm import tqdm
 from pathlib import Path
 from googleapiclient.http import MediaIoBaseDownload
@@ -17,23 +18,36 @@ init()  # Colorama init
 with open("settings.json", "r") as settings_json:
     settings = json.load(settings_json)
 
-def prompt_duplicate_file(path, local_filename, mode=None):
+def prompt_duplicate_file(parent_path: str | Path, local_filename: str, mode: Optional[Literal["extract", "compress"]] = None) -> str:
+    """
+    Modifies (or not) a file name to handle duplicate files on the same file path.
+    
+    mode can be "extract", "compress" or None (for uncompressed files).
+
+    Args:
+        path (strPath | Path): Parent path of the file.
+        local_filename (str): Name of the file in your system.
+        mode (str, optional): Type of renaming process. Defaults to None.
+
+    Returns:
+        str: Modified (or not) file name.
+    """    
     while True:
         if mode == "compress":
             print("\n" + Fore.YELLOW + "WARNING" + Style.RESET_ALL + 
-                f": Compressed file '{local_filename}' already exists in '{path}'.")
+                f": Compressed file '{local_filename}' already exists in '{parent_path}'.")
             print("// RP = Replace file.")
             print("// RN = Rename file (Adds a number next to it).")
     
         elif mode == "extract":
             print("\n" + Fore.YELLOW + "WARNING" + Style.RESET_ALL + 
-                f": Extraction folder '{local_filename}' already exists in '{path}'.")
+                f": Extraction folder '{local_filename}' already exists in '{parent_path}'.")
             print("// RP = Replace folder.")
             print("// RN = Rename folder (Adds a number next to it).")
             
         else:
             print("\n" + Fore.YELLOW + "WARNING" + Style.RESET_ALL + 
-                f": File '{local_filename}' already exists in '{path}'.")
+                f": File '{local_filename}' already exists in '{parent_path}'.")
             print("// RP = Replace file.")
             print("// RN = Rename file (Adds a number next to it).")
             
@@ -50,28 +64,43 @@ def prompt_duplicate_file(path, local_filename, mode=None):
     if choice == "RN":
         counter = 0
         print("\nRenaming file...", end="")
-        file_path = Path.joinpath(path, local_filename)
+        file_path = Path.joinpath(parent_path, local_filename)
         while file_path.exists():
             counter += 1 
       
             if mode == "extract":
                 folder_name = local_filename.strip(f"({counter - 1})")
-                file_path = Path(f"{path}/{folder_name}({counter})")
+                file_path = Path(f"{parent_path}/{folder_name}({counter})")
                
             else:
                 suffix = Path(local_filename).suffixes
                 joined_suffixes = "".join(suffix[0:])
                 pure_filename = local_filename.removesuffix(joined_suffixes).strip(f"({counter - 1})")
                 if mode == "compress":
-                    file_path = Path(f"{path}/{pure_filename}({counter})").with_suffix(settings["preferred_compression_format"])
+                    file_path = Path(f"{parent_path}/{pure_filename}({counter})").with_suffix(settings["preferred_compression_format"])
                 else:
-                    file_path = Path(f"{path}/{pure_filename}({counter})").with_suffix(joined_suffixes)
+                    file_path = Path(f"{parent_path}/{pure_filename}({counter})").with_suffix(joined_suffixes)
 
         local_filename = file_path.name        
         print(Fore.GREEN + "Done!" + Style.RESET_ALL)     
     return local_filename
         
-def compact_directory(file_dir): 
+def compact_directory(file_dir: Path) -> tuple[Path, str, dict[str, str], Literal[True]]:
+    """
+    Compresses the specified directory using the preferred compression format specified in settings.json.
+
+    Args:
+        file_dir (Path): Path of the directory to be compressed.
+
+    Returns:
+        A tuple, containing:
+            Path: The absolute path of the compressed file.
+            str: Name of the compressed file.
+            dict[str, str]: A dict containing the file's metadata.
+            Literal[True]: Bool value indicating the creation of the compressed file in the system, 
+            to then be removed after the upload is completed.
+    """    
+    
     print("\nFile identified as a directory. Starting compression process...", end="")
     sleep(0.5)
     target_path = Path(file_dir).with_suffix(settings["preferred_compression_format"])
@@ -82,6 +111,7 @@ def compact_directory(file_dir):
     if target_path.exists():
         local_filename = prompt_duplicate_file(Path(target_path).parent, local_filename, "compress")
         target_path = target_path.with_name(local_filename)
+        print()
         
     progress_bar = load_progress_bar(description="Compressing", 
                                      total_file_size=folder_size, 
@@ -95,7 +125,7 @@ def compact_directory(file_dir):
                 tar.add(item, item.relative_to(file_dir), recursive=False)
                 if item.is_file():
                     progress_bar.update(item.stat().st_size)
-                    
+                 
         file_metadata = {"name" : local_filename, 
                          "mimetype" : "application/gzip"}
     
@@ -127,7 +157,15 @@ def compact_directory(file_dir):
     file_created = True
     return target_path, local_filename, file_metadata, file_created
 
-def extract_file(compressed_file_path, extract_folder_path): 
+def extract_file(compressed_file_path: Path, extract_folder_path: Path) -> None:
+    """
+    Extracts a compressed file.
+
+    Args:
+        compressed_file_path (Path): A absolute path to the compressed file.
+        extract_folder_path (Path): A absolute path to the folder where the file will be extracted to.
+    """   
+     
     if extract_folder_path.exists():
         extract_folder_path = extract_folder_path.with_name(prompt_duplicate_file(extract_folder_path.parent, 
                                                                                   extract_folder_path.name, 
@@ -215,10 +253,20 @@ def extract_file(compressed_file_path, extract_folder_path):
                     if perms_changed:
                         os.chmod(destination, stat.S_IREAD)
                     
-def convert_filesize(size_bytes):
+def convert_filesize(size_bytes: int) -> str:
+    """
+    Converts a file size, in bytes, to the appropriate format (B, KB, MB, GB, ...).
+
+    Args:
+        size_bytes (int): Size of a file, in bytes.
+
+    Returns:
+        str: The converted size, with its unit, as a formatted string.
+    """    
+    
     size_bytes = int(size_bytes)
     if size_bytes == 0:
-        return "0B"
+        return "0 B"
     size_unit = ("B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB")
     i = int(math.floor(math.log(size_bytes, 1024))) # i = index of size_unit tuple
     # unit_bytesize = 1 unit of size, in bytes.
@@ -227,7 +275,16 @@ def convert_filesize(size_bytes):
     size_converted = round(size_bytes / unit_bytesize, 2)
     return f"{size_converted} {size_unit[i]}"
 
-def upload_file(file_size, request):
+def upload_file(file_size: int, request: object) -> None:
+    """
+    Uploads a file to Google Drive.
+
+    Args:
+        file_size (int): Size of the file being uploaded, in bytes.
+        request (object): HTTP request object that handles the upload process in chunks.
+
+    """    
+    
     print("Starting upload...", end="")
     sleep(1)
     print(Fore.GREEN + "Done!" + Style.RESET_ALL)
@@ -243,13 +300,21 @@ def upload_file(file_size, request):
             progress_bar.n = status.resumable_progress # Keeps track of the total size transfered.
             progress_bar.refresh()
 
-        # Updates bar when the file is uploaded in a single chunk.
+        # Updates bar when the file is uploaded in a single chunk. 
+        # This avoids the AttributeError mentioned above.
         if status is None:
             progress_bar.n = file_size
             progress_bar.refresh() 
     progress_bar.close()
 
-def remove_localfile(file_dir):
+def remove_localfile(file_dir: Path) -> None:
+    """
+    Removes the created compressed file (if it exists) after a file upload.
+
+    Args:
+        file_dir (Path): Absolute path of the compressed file to be removed.
+    """    
+    
     if file_dir.exists:
         print("\nRemoving the compressed file from system...", end="")
         sleep(1)
@@ -259,7 +324,15 @@ def remove_localfile(file_dir):
         print(f"\n" + Fore.RED + "ERROR" + Style.RESET_ALL + 
               f": File path '{file_dir}' doesn't exist. Skipping operation...\n")
 
-def list_drive_files(search_results, GOOGLE_WORKSPACE_MIMETYPES):
+def list_drive_files(search_results: list[dict[str, str | int]], GOOGLE_WORKSPACE_MIMETYPES: dict[str, str]) -> None:
+    """
+    Lists, in the terminal, the Google Drive files present in search_results.
+
+    Args:
+        search_results (list[dict[str, str | int]]): A list of files found during the search process. 
+        Each dict in the list is a file with its information (name, size, mimetype, etc...).
+        GOOGLE_WORKSPACE_MIMETYPES (dict[str, str]): A dict containg the mimetypes of Google Workspace files.
+    """    
     terminal_size = os.get_terminal_size().columns - 1
     counter = 1
     print("\nThe following files were found:")
@@ -285,7 +358,15 @@ def list_drive_files(search_results, GOOGLE_WORKSPACE_MIMETYPES):
     print(Fore.YELLOW + "WARNING" + Style.RESET_ALL +
           ": Files tagged with '*' are not supported for download.")
     
-def list_skipped_files(skipped_files, GOOGLE_WORKSPACE_MIMETYPES):
+def list_skipped_files(skipped_files: list[dict[str, str]], GOOGLE_WORKSPACE_MIMETYPES: dict[str, str]) -> None:
+    """
+    Lists, in the terminal, all the files that were skipped during a Drive folder download.
+
+    Args:
+        skipped_files (list[dict[str, str]]): A list of dicts containing information about each skipped file.
+        GOOGLE_WORKSPACE_MIMETYPES (dict[str, str]): A dict containg the mimetypes of Google Workspace files.
+    """    
+    
     terminal_size = os.get_terminal_size().columns - 1
     counter = 1
     print("\nThe following items were skipped:")
@@ -298,7 +379,15 @@ def list_skipped_files(skipped_files, GOOGLE_WORKSPACE_MIMETYPES):
     print("-" * terminal_size)
     print("Download the files directly from Google Drive if you need them.")
     
-def list_folders(search_results):
+def list_folders(search_results: list[dict[str, str]]) -> None:
+    """
+    Lists, in the terminal, all the Drive folders found.
+
+    Args:
+        search_results (list[dict[str, str]]): A list of files found during the search process. 
+        Each dict in the list is a folder with its information (name and ID).
+    """ 
+       
     terminal_size = os.get_terminal_size().columns - 1
     counter = 1
     print("\nThe following folders were found:")
@@ -310,7 +399,22 @@ def list_folders(search_results):
         counter += 1
     print("-" * terminal_size)
     
-def print_file_stats(file_name=None, file_size=None, folder_mode=False, folder_stats=None):
+def print_file_stats(file_name: Optional[str] = None, file_size: Optional[int] = None, 
+                     folder_mode: Optional[bool] = False, folder_stats: Optional[dict[str, str | int]] = None) -> None:
+    """
+    Prints a file/folder (depending of the value of folder_mode.) stats, like name and size.
+    
+    If using to display file information, use only file_name and file_size.
+    Else, use only folder_mode and folder_stats. 
+    
+    Args:
+        file_name (str, optional): Name of the file. Defaults to None.
+        file_size (int, optional): Size of the file, in bytes. Defaults to None. 
+        folder_mode (bool, optional): Modifies how and what information is printed, based if it's a file or folder. Defaults to False.
+        folder_stats (dict[str, str | int], optional): A dict containing information about a folder, 
+        such as name, size, number of files, etc. Defaults to None.
+    """  
+      
     terminal_size = os.get_terminal_size().columns - 1
     if folder_mode == True:
         print("-" * terminal_size)
@@ -320,7 +424,7 @@ def print_file_stats(file_name=None, file_size=None, folder_mode=False, folder_s
             # folder size.
             if key != "Bytes":
                 print(f"// {key}: {value}")
-        print("-" * terminal_size)
+        print("-" * terminal_size + "\n")
     else:
         print("-" * terminal_size) 
         print(f"// File: {file_name}")
@@ -328,8 +432,22 @@ def print_file_stats(file_name=None, file_size=None, folder_mode=False, folder_s
         print(("-" * terminal_size) + "\n")
         sleep(1)
 
-def prepare_directory(download_dir, gdrive_folder_name):
-    folder_path = Path.joinpath(download_dir, gdrive_folder_name)
+def prepare_directory(parent_path: Path, gdrive_folder_name: str) -> Path:
+    """
+    Creates a folder in your local system that has the same name as the Drive folder.
+
+    Args:
+        parent_path (Path): The absolute, parent path, where the folder will be created.
+        gdrive_folder_name (str): Name of the folder to be created in the parent path.
+
+    Returns:
+        Path: Absolute path of the folder that was created. 
+        
+    Raises:
+        OSError: Whem the folder name has invalid characters [\\ / ? : * < > | \"].
+    """    
+    
+    folder_path = Path.joinpath(parent_path, gdrive_folder_name)
     try:
         if not folder_path.exists():
             folder_path.mkdir()
@@ -340,12 +458,22 @@ def prepare_directory(download_dir, gdrive_folder_name):
     except OSError:
         print("\n" + Fore.RED + "ERROR" + Style.RESET_ALL +
               ": Invalid character in folder name. Rename the folder to remove the invalid characters [\\ / ? : * < > | \"].")
-        print("Aborting operation...")
-        sleep(0.5)
+        input("Press any key to exit")
         exit()
 
+def load_progress_bar(description: str, total_file_size: Optional[int] = None, folder_mode: Optional[bool] = False) -> tqdm:
+    """
+    Loads a progress bar instance. The bar appearance will change depending on what arguments given.
 
-def load_progress_bar(description, total_file_size=None, folder_mode=False):
+    Args:
+        description (str): The description that will appear beside the progress bar.
+        total_file_size (int, optional): The total size of the file, in bytes. Defaults to None.
+        folder_mode (bool, optional): Changes the progress bar appearance to better suit the folder download mode. Defaults to False.
+
+    Returns:
+        tqdm: A tqdm object that instantiates and controls the progress bar.
+    """ 
+       
     if folder_mode == False:
         bar_format = "{desc}: {percentage:3.1f}%|{bar}| {n_fmt}B/{total_fmt}B [{elapsed}<{remaining}, {rate_fmt}]"  
     elif folder_mode == True and total_file_size is None:
@@ -359,17 +487,35 @@ def load_progress_bar(description, total_file_size=None, folder_mode=False):
         return tqdm(total=int(total_file_size), desc=description, miniters=1, bar_format=bar_format, 
                     unit="B", unit_scale=True, unit_divisor=1024, dynamic_ncols=True)
        
-class DownloadSystem:
+class DownloadSystem: 
     total_skipped = 0
     skipped_files = []
-    def __init__(self, progress_bar=None, unknown_folder_size=False, folder_mode=False, access_token=None):
+    def __init__(self, progress_bar: tqdm = None, folder_mode: Optional[bool] = False, access_token: Optional[str] = None):
+        """
+        Class that encapsulates all download related functions.
+
+        Args:
+            progress_bar (tqdm, optional): A tqdm object instance the that constrols the progress bar. Defaults to None.
+            folder_mode (bool, optional): Changes functions and progress bar behaviour to better suit folder downloads. Defaults to False.
+            access_token (str, optional): A token that authenticates the user with the Drive API. Defaults to None.
+        """    
+  
         self.progress_bar = progress_bar
-        self.unknown_folder_size = unknown_folder_size
-        self.unknown_folder_size = unknown_folder_size
+        # self.unknown_folder_size = unknown_folder_size
         self.folder_mode = folder_mode
         self.access_token = access_token
                  
-    def get_files(self, folder_id, directory, drive):
+    def get_files(self, folder_id: str, directory: Path, drive: object) -> None: 
+        """
+        Iterates through all files/folders present in a Google Drive folder and starts the download process. 
+        If the file is a Drive folder, a folder will be created in the path specified in the directory argument.
+
+        Args:
+            folder_id (str): ID of the Google Drive folder.
+            directory (Path): Path where the folder will be created.
+            drive (object): A Google Drive service object used to make API requests through its methods.
+        """
+            
         search_results = []
         page_token = None
         while True:
@@ -388,7 +534,6 @@ class DownloadSystem:
                     file["name"] = file["name"].replace(char, "_")
         
             if file["mimeType"] == "application/vnd.google-apps.folder":
-                # Precisa adicionar self nas chamadas ou apenas na definição?
                 self.get_files(folder_id=file["id"], 
                                directory=prepare_directory(directory, file["name"]), 
                                drive=drive)
@@ -397,7 +542,16 @@ class DownloadSystem:
 
     # Handles both single file downloads (as long as it's not Google Workspace type) and
     # folder file downloads.
-    def download_file(self, drive, directory, file_info):
+    def download_file(self, drive: object, directory: Path, file_info: dict[str, str]) -> None:
+        """
+        Downloads a Google Drive file.
+
+        Args:
+            drive (object): A Google Drive service object used to make API requests through its methods.
+            directory (Path): Absolute path to where the file will be downloaded.
+            file_info (dict[str, str]): A dict containing information about the Drive file to be downloaded.
+        """
+
         # 'get' handles google apps script type of file,
         # as it's downloadable but API doesn't return a file size.
         file_size = int(file_info.get("size", 0))
@@ -458,7 +612,16 @@ class DownloadSystem:
             self.progress_bar.close()
         file.close()
 
-    def download_exported_file(self, file_info, drive, download_dir):
+    def download_exported_file(self, file_info: dict[str, str], drive: object, download_dir: Path) -> None:
+        """
+        Downloads a Google Workspace file, exporting it to a different format before the download.
+
+        Args:
+            file_info (dict[str, str]): A dict containing information about the Drive file to be downloaded.
+            drive (object): A Google Drive service object used to make API requests through its methods.
+            download_dir (Path): Absolute path to where the file will be downloaded.
+        """        
+        
         pbar_loaded = False
         file_size = int(file_info.get("size", 0)) 
         export_formats = constants.DRIVE_EXPORT_FORMATS[file_info["mimeType"]]
@@ -479,7 +642,8 @@ class DownloadSystem:
             
             if choosed_format == "A":
                 os.system('cls' if os.name == 'nt' else 'clear')
-                return choosed_format
+                input("Press any key to exit")
+                exit()
 
             try:
                 format_info = next(formats for formats in export_formats if choosed_format == formats["format"].upper())
@@ -489,13 +653,14 @@ class DownloadSystem:
                 print(Fore.RED + "ERROR" + Style.RESET_ALL + f": {choosed_format} is not a valid format choice.\n")
                 continue
         
-        #tmp_path = check_download_dir(f"{file_info['name']}{format_info['extension']}", download_dir)
-        file_name = prompt_duplicate_file(download_dir, f"{file_info['name']}{format_info['extension']}")
-        file = io.FileIO(f"{Path.joinpath(download_dir, file_name)}", "wb")
+        file_name = f"{file_info['name']}{format_info['extension']}"   
+        if Path.joinpath(download_dir, file_name).exists():
+            file_name = prompt_duplicate_file(download_dir, file_name)
+        file = io.FileIO(Path.joinpath(download_dir, file_name), "wb")
         
-        # Google Drive export() method has a 10MB file size limit.
+        # Google Drive export_media() method has a 10MB file size limit.
         # If the file is larger than 10MB, the program will use a
-        # direct GET request with a export URL, instead of using export().
+        # direct GET request with a export URL, instead of using export_media().
         if file_size > 10485760:
             self.download_by_http(file_info, file, format_info["mimetype"])
 
@@ -516,7 +681,19 @@ class DownloadSystem:
                 progress_bar.refresh()
         file.close()
     
-    def download_by_http(self, file_info, file, format_mimetype=None):
+    def download_by_http(self, file_info: dict[str, str], file: object, format_mimetype: str) -> None:
+        """
+        Downloads a Google Drive file using a direct HTTP request instead of the Google API wrapper for Python. 
+        
+        Use this when downloading a Google Workspace file that is bigger than 10 MB, 
+        as that's the size limit for the export_media() method in the Google API wrapper.
+
+        Args:
+            file_info (dict[str, str]): A dict containing information about the Drive file to be downloaded.
+            file (object): A opened file object.
+            format_mimetype (str): Mimetype of the format the file will be exported to. 
+        """ 
+
         download_url = file_info["exportLinks"][format_mimetype] 
         header={'Authorization': 'Bearer ' + self.access_token}
         if self.folder_mode == False:
