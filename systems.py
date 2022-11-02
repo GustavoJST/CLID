@@ -31,7 +31,8 @@ def prompt_duplicate_file(parent_path: str | Path, local_filename: str, mode: Op
 
     Returns:
         str: Modified (or not) file name.
-    """    
+    """
+    
     while True:
         if mode == "compress":
             print("\n" + Fore.YELLOW + "WARNING" + Style.RESET_ALL + 
@@ -148,6 +149,7 @@ def compact_directory(file_dir: Path) -> tuple[Path, str, dict[str, str], Litera
                     
         file_metadata = {"name" : local_filename, 
                          "mimetype" : "application/zip"}
+        
     else:
         print("\n" + Fore.RED + "ERROR" + Style.RESET_ALL + 
               ": Invalid 'preferred_compression_format' setting in settings.json. Rename it to a valid option.")
@@ -251,6 +253,7 @@ def extract_file(compressed_file_path: Path, extract_folder_path: Path) -> None:
                     tfobj.close()
                     out.close()
                     if perms_changed:
+                        # Returns file to read-only mode.
                         os.chmod(destination, stat.S_IREAD)
                     
 def convert_filesize(size_bytes: int) -> str:
@@ -402,7 +405,7 @@ def list_folders(search_results: list[dict[str, str]]) -> None:
 def print_file_stats(file_name: Optional[str] = None, file_size: Optional[int] = None, 
                      folder_mode: Optional[bool] = False, folder_stats: Optional[dict[str, str | int]] = None) -> None:
     """
-    Prints a file/folder (depending of the value of folder_mode.) stats, like name and size.
+    Prints a file/folder (depending of the value of folder_mode) stats, like name and size.
     
     If using to display file information, use only file_name and file_size.
     Else, use only folder_mode and folder_stats. 
@@ -437,14 +440,14 @@ def prepare_directory(parent_path: Path, gdrive_folder_name: str) -> Path:
     Creates a folder in your local system that has the same name as the Drive folder.
 
     Args:
-        parent_path (Path): The absolute, parent path, where the folder will be created.
+        parent_path (Path): The absolute parent path, where the folder will be created.
         gdrive_folder_name (str): Name of the folder to be created in the parent path.
 
     Returns:
         Path: Absolute path of the folder that was created. 
         
     Raises:
-        OSError: Whem the folder name has invalid characters [\\ / ? : * < > | \"].
+        OSError: When the folder name has invalid characters [\\ / ? : * < > | \"].
     """    
     
     folder_path = Path.joinpath(parent_path, gdrive_folder_name)
@@ -463,7 +466,7 @@ def prepare_directory(parent_path: Path, gdrive_folder_name: str) -> Path:
 
 def load_progress_bar(description: str, total_file_size: Optional[int] = None, folder_mode: Optional[bool] = False) -> tqdm:
     """
-    Loads a progress bar instance. The bar appearance will change depending on what arguments given.
+    Loads a progress bar instance. The bar appearance will change depending on what arguments are given.
 
     Args:
         description (str): The description that will appear beside the progress bar.
@@ -495,13 +498,12 @@ class DownloadSystem:
         Class that encapsulates all download related functions.
 
         Args:
-            progress_bar (tqdm, optional): A tqdm object instance the that constrols the progress bar. Defaults to None.
+            progress_bar (tqdm, optional): A tqdm object instance the that controls the progress bar. Defaults to None.
             folder_mode (bool, optional): Changes functions and progress bar behaviour to better suit folder downloads. Defaults to False.
             access_token (str, optional): A token that authenticates the user with the Drive API. Defaults to None.
         """    
   
         self.progress_bar = progress_bar
-        # self.unknown_folder_size = unknown_folder_size
         self.folder_mode = folder_mode
         self.access_token = access_token
                  
@@ -513,7 +515,7 @@ class DownloadSystem:
         Args:
             folder_id (str): ID of the Google Drive folder.
             directory (Path): Path where the folder will be created.
-            drive (object): A Google Drive service object used to make API requests through its methods.
+            drive (object): A Google Drive service object, used to make API requests through its methods.
         """
             
         search_results = []
@@ -528,7 +530,7 @@ class DownloadSystem:
             if page_token is None:
                 break
         for file in search_results:
-            # Checks and replace invalid characters in file name
+            # Checks and replaces invalid characters in file name.
             for char in file["name"]:
                 if char in constants.INVALID_FILENAME_CHARACTERS:
                     file["name"] = file["name"].replace(char, "_")
@@ -547,8 +549,8 @@ class DownloadSystem:
         Downloads a Google Drive file.
 
         Args:
-            drive (object): A Google Drive service object used to make API requests through its methods.
-            directory (Path): Absolute path to where the file will be downloaded.
+            drive (object): A Google Drive service object, used to make API requests through its methods.
+            directory (Path): Absolute path to where the file will be downloaded in the system.
             file_info (dict[str, str]): A dict containing information about the Drive file to be downloaded.
         """
 
@@ -592,8 +594,8 @@ class DownloadSystem:
                 """ Folder size is calculated based on the size of the files inside
                 the folder, but when exporting files to a different format, they
                 can increase in size (depending on the format).
-                Because of this change, the progress bar can surpass the maximum
-                size value. The code below fix this behavior. """
+                Because of this change, the progress bar can surpass the total
+                value. The code below fixes this behavior. """
                 if (chunk + self.progress_bar.n) >= self.progress_bar.total:
                     self.progress_bar.n = self.progress_bar.total
                     self.progress_bar.refresh() 
@@ -615,10 +617,13 @@ class DownloadSystem:
     def download_exported_file(self, file_info: dict[str, str], drive: object, download_dir: Path) -> None:
         """
         Downloads a Google Workspace file, exporting it to a different format before the download.
+        
+        If the size of the file to be downloaded is more than 10 MB, 
+        this function will call download_by_http() to bypass this limit.
 
         Args:
             file_info (dict[str, str]): A dict containing information about the Drive file to be downloaded.
-            drive (object): A Google Drive service object used to make API requests through its methods.
+            drive (object): A Google Drive service object, used to make API requests through its methods.
             download_dir (Path): Absolute path to where the file will be downloaded.
         """        
         
@@ -685,12 +690,12 @@ class DownloadSystem:
         """
         Downloads a Google Drive file using a direct HTTP request instead of the Google API wrapper for Python. 
         
-        Use this when downloading a Google Workspace file that is bigger than 10 MB, 
+        This is used when downloading a Google Workspace file that is bigger than 10 MB, 
         as that's the size limit for the export_media() method in the Google API wrapper.
 
         Args:
             file_info (dict[str, str]): A dict containing information about the Drive file to be downloaded.
-            file (object): A opened file object.
+            file (object): A file object opened by the download_exported_file() function.
             format_mimetype (str): Mimetype of the format the file will be exported to. 
         """ 
 

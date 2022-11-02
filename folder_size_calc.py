@@ -8,9 +8,17 @@ from systems import convert_filesize
 from timeit import default_timer
 from constants import UNSUPPORTED_MIMETYPES, DRIVE_EXPORT_FORMATS
 from typing import Literal
+from tqdm import tqdm
 
 class GoogleDriveSizeCalculate:
-    def __init__(self, service=None, progress_bar=None):
+    def __init__(self, service: object, progress_bar: tqdm = None) -> None:
+        """
+        Class responsible for calculating the size of a Google Drive folder.
+
+        Args:
+            service (object, optional): A Google Drive service object, used to make API requests through its methods.
+            progress_bar (tqdm, optional): A tqdm object instance the that controls the progress bar. Defaults to None.
+        """        
         self.__G_DRIVE_DIR_MIME_TYPE = "application/vnd.google-apps.folder"
         self.__service = service
         self.total_bytes = 0
@@ -24,7 +32,7 @@ class GoogleDriveSizeCalculate:
        
     def gdrive_checker(self, file_id: str) -> (dict[str, str | int] | Literal['Timeout'] | None) :
         """
-        Starts the recursion process through a Google Drive folder. If 10 seconds have passed and 
+        Starts the recursion process in a Google Drive folder. If 10 seconds have passed and 
         no results were returned yet, then the function will exit, skipping to the download process 
         and giving no folder data in return.
 
@@ -37,7 +45,7 @@ class GoogleDriveSizeCalculate:
             dict[str, Any]: If the folder size is calculated in less than 10 seconds, 
             returns a dict cointaing information about the folder.
             Literal['Timeout']: If the calculation process passes the 10 seconds limit, a Literal['Timeout'] will be returned.
-            None: If an error occurs (most likely an HTTP error), the function will print the error and return None.   
+            None: If an error occurs, the function will print the error and return None.   
         """
              
         error = False
@@ -110,7 +118,7 @@ class GoogleDriveSizeCalculate:
 
     def gDrive_file(self, **kwargs) -> None:
         """Adds the size of the file to the total size of the folder.""" 
-       
+        
         try:
             size = int(kwargs["size"])
         except:

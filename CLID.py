@@ -3,10 +3,10 @@
 """ Pick one of the shebangs below (according to your operating system) 
 and place it on the first line of the script:
 
-Windows 
+Windows:
 #!./CLID_env/Scripts/python
 
-Linux
+Linux:
 #!./CLID_env/bin/python """
 
 import os
@@ -48,14 +48,20 @@ def main():
     access_token = creds.token
     init()  # Colorama init
     
-    # Loads settings.json:
-    # download_directory(string) = Absolute path of the directory you want your files to be downloaded.
-    # upload_path(string) = Absolute path of a file you want to upload when in upload mode.
-    # Useful if you don't want to be prompted for a download directory every time
-    # or need to upload the same file every time.
-    # shared_with_me(bool) = Controls file listing behaviour. 
-    # 'true' will list files created/owned by the user and files shared with the user, 
-    # while 'false' only displays files created/owned by the user.
+    """ Loads settings.json:
+    
+    download_directory(str) = Absolute path of the directory you want your files to be downloaded.
+    
+    upload_path(str) = Absolute path of a file you want to upload when in upload mode.
+    Useful if you don't want to be prompted for a download directory every time or 
+    need to upload the same file every time.
+    
+    shared_with_me(bool) = Controls file listing behaviour. 
+    "true" will list files created/owned by the user and files shared with the user, 
+    while "false" only displays files created/owned by the user.
+    
+    preferred_compression_format(str) = Specifies what compression format will be 
+    used when compressing folders. Supported values are ".tar.gz" or ".zip". """
     with open("settings.json", "r") as settings_json:
         settings = json.load(settings_json)
     
@@ -236,6 +242,7 @@ def main():
                         else:
                             break
                 
+                # If the file is a Drive Folder.
                 if file_info["mimeType"] == "application/vnd.google-apps.folder":
                     if Path.joinpath(download_dir, file_info["name"]).exists():
                         file_info["name"] = systems.prompt_duplicate_file(download_dir, file_info["name"])
@@ -270,20 +277,20 @@ def main():
                         progress_bar.refresh()
                     progress_bar.close()
                         
-                # If file is a Google Workspace type but not a folder:
+                # If file is a Google Workspace type but not a folder.
                 elif file_info["mimeType"] in constants.DRIVE_EXPORT_FORMATS.keys():           
                     systems.print_file_stats(file_info["name"], file_info["size"])
                     file_downloader = DownloadSystem(access_token=access_token)
                     file_downloader.download_exported_file(file_info, drive, download_dir)
                                      
-                # If file did not satisfied the if statements above, then it's a
-                # unsuported type (Google Form, Maps or Site)
-                elif file_info["mimeType"] in constants.NO_SIZE_TYPES:
+                # If the file isn't a supported Google Workspace file.
+                elif file_info["mimeType"] in constants.UNSUPPORTED_MIMETYPES:
                     os.system('cls' if os.name == 'nt' else 'clear')
                     print("\n" + Fore.RED + "ERROR" + Style.RESET_ALL + f": File '{file_info['name']}', of type " 
                         f"'{constants.GOOGLE_WORKSPACE_MIMETYPES[file_info['mimeType']].strip('*')}', isn't supported for download.")  
-                    print("Aborting Operation...")
+                    print("\nAborting Operation...", end="")
                     sleep(1)
+                    print(Fore.GREEN + "Done!" + Style.RESET_ALL)
                     continue
                 
                 # Handles ordinary files (files that aren't Google Workspace type).
@@ -342,11 +349,10 @@ def main():
                         systems.extract_file(compressed_file_path, extract_folder_path)
                         print("\nExtraction completed!")
                         systems.remove_localfile(compressed_file_path)
-                
-            # TODO: how to handle htppError?                   
+                                 
             except HttpError as error:
-                print(f"An error occurred: {error}")
-                return
+                print(f"ERROR: {error}")
+                exit()
                  
         if option == "C":
             file_created = False
@@ -372,8 +378,8 @@ def main():
                 
                 if file_dir.exists() and file_dir != (WindowsPath(".") if os.name == "nt" else PosixPath(".")):
                     if file_dir.is_dir():
-                        # Function returns the .zip file name, path, metadata and a
-                        # bool informing the .zip file creation status.
+                        # Function returns the compressed file name, path, metadata and a
+                        # bool informing the compressed file creation status.
                         file_dir, local_filename, file_metadata, file_created = systems.compact_directory(file_dir)
                         file = MediaFileUpload(file_dir, mimetype=file_metadata["mimetype"], 
                                                 resumable=True, chunksize=constants.CHUNK_SIZE)
@@ -480,9 +486,8 @@ def main():
                 print("\nUpload Completed Successfully!")
                 
             except HttpError as error:
-                # TODO(developer) - Handle errors from drive API.
                 print(f"An error occurred: {error}") 
-                return
+                exit()
             
             file.stream().close()
             if file_created == True:
