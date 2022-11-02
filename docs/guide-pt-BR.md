@@ -126,7 +126,7 @@ Esse processo pode demorar para pastas com muitas subpastas dentro, Quanto mais 
 ## Configurações e preferências
 CLID possui um arquivo `settings.json` que permite ao usuário mudar como o CLID se comporta. **Para qualquer mudança feita em `settings.json` ter efeito, é necessário reiniciar o CLID**. A seguir, uma explicação do que cada configuração faz: <br><br>
 
-### download_directory (string/null) <!-- omit in toc -->
+### download_directory (string | null) <!-- omit in toc -->
 Permite ao usuário especificar um diretório de download para todos os arquivos/pastas baixados com o CLID. Se `"download_directory": null`, CLID irá perguntar por um diretório de download toda vez que você for baixar um arquivo.
 
 Exemplo: `"download_directory": "C:\\Users\\Gustavo\\Downloads"` <br>
@@ -135,7 +135,7 @@ Clid irá pular o prompt de diretório de download, e todos os arquivos/pastas b
 
 Por padrão, o valor desta configuração é `null`.<br><br>
 
-### upload_path (string/null) <!-- omit in toc -->
+### upload_path (string | null) <!-- omit in toc -->
 Quase a mesma coisa que `download_directory`, mas diz respeito ao upload de arquivos. Especifique o **caminho absoluto** do arquivo que você quer fazer upload, e CLID irá pular o prompt pedindo pelo caminho do arquivo na hora do upload. Muito útil se você faz upload do mesmo arquivo várias vezes no Google Drive. Se `"upload_path": null`, CLID irá sempre perguntar por um caminho de arquivo ao fazer upload.
 
 Exemplo: `"upload_path": "C:\\Users\\Gustavo\\file.txt"` 

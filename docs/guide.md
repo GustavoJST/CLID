@@ -123,7 +123,7 @@ This process can take a while for folder with a lot of subfolders inside. The mo
 ## Settings and preferences
 CLID has a  `settings.json` file that lets the user change how CLID behaves.  **For any change you made in `settings.json` to take effect, you'll need to restart CLID**. Here's a rundown of what each setting do: <br><br>
 
-### download_directory (string/null) <!-- omit in toc -->
+### download_directory (string | null) <!-- omit in toc -->
 Allows the user to specify a download directory for all the files/folders downloaded with CLID. If `"download_directory": null`, CLID will ask for a download directory every time you want to download a file.
 
 Example:
@@ -133,7 +133,7 @@ Example:
 
  By default, this setting value is `null`. <br><br>
  
-### upload_path (string/null) <!-- omit in toc -->
+### upload_path (string | null) <!-- omit in toc -->
 Almost the same thing as `download_directory`, but it regards file uploading. Specify a **absolute path** of a file you want to upload, and CLID will skip the prompt for a file path when in upload mode. Really useful if you upload the same file/folder to Google Drive a lot of times. If `"upload_path": null`, CLID will ask for a file path every time you want to upload a file.
 
 Example: `"upload_path": "C:\\Users\\Gustavo\\file.txt"` 

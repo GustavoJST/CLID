@@ -9,9 +9,9 @@ For the Portuguese (pt-BR) version of this README, [click here](README-pt-br.md)
 
 Read the [documentation](docs/guide.md/#table-of-contents) for information on how to setup and use CLID.
    
-<a href="https://github.com/gustavojst/CLID/labels/bug">Report Bug</a>
+<a href="https://github.com/GustavoJST/CLID/labels/bug">Report Bug</a>
     ·
-<a href="https://github.com/gustavojst/CLID/labels/request">Request Feature</a> 
+<a href="https://github.com/GustavoJST/CLID/labels/request">Request Feature</a> 
 </div>
 
 <details>
@@ -26,7 +26,7 @@ CLID (short for CLI Drive) is a simple program whose main purpose is to download
 
 CLID was made using the [Google API Python client library](https://github.com/googleapis/google-api-python-client) for API communication with Google Drive, [tqdm](https://github.com/tqdm/tqdm) for the progress bars and [gdrive_folder_size](https://github.com/XtremeRahul/gdrive_folder_size) to help calculate the size of Google Drive folders.
 
-The project idea came from a problem in sincronyzing a folder between my desktop computer and my laptop that I use to study. I was using Google Drive to sync it, but it was getting really repetitive doing it everyday (small repetitive tasks, like opening the browser, downloading the file, unziping it, replacing it... you get the idea). So, I came up with the ideia of making a Python program/script that could handle most of the boring stuff for me, without even having to open my browser.
+The project idea came from a problem in sincronyzing a folder between my desktop computer and my laptop that I use to study. I was using Google Drive to sync it, but it was getting really repetitive doing it everyday (small repetitive tasks, like opening the browser, downloading the file, unziping it, replacing it... you get the idea). Because of that, I came up with the ideia of making a Python program/script that would handle most of the boring stuff for me, without even having to open my browser.
 <br><br>
 
 ## Cool story bro... but what can it do? <!-- omit in toc -->
@@ -35,7 +35,7 @@ Here's a list of what CLID can and cannot do:
 ### CLID can: <!-- omit in toc -->
 - Download files and folders created/owned by you, or shared with you.
 - Upload files/folders.
-- Calculate Google Drive folder size.
+- Calculate a Google Drive folder size.
 - Export Google Workspace files to different formats when downloading.
 - Streamline the upload/download process by compressing/extracing folders when needed.
 - Handle duplicate files in your Google Drive or local system when uploading/downloading.

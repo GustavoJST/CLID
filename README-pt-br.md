@@ -3,7 +3,7 @@
 <div align="center">
     <h3 align="center">CLID</h3>
 
-Um programa simples, baseado em Python, para fazer download/upload de arquivos e pastas do Google Drive, diretamente do terminal.
+Um programa simples, baseado em Python, para fazer download/upload de arquivos e pastas do Google Drive diretamente do terminal.
 
 Leia a [documentação](docs/guide-pt-BR.md/#sumário) para obter informações sobre como instalar e usar o CLID.
    
@@ -36,12 +36,12 @@ A seguir, uma lista do que o CLID consegue e não consegue fazer:
 - Fazer upload de arquivos e pastas.
 - Calcular o tamanho de uma pasta do Google Drive.
 - Exportar arquivos do Google Workspace para formatos diferentes durante o download.
-- Facilitar o processo de upload/download, comprimindo/extraindo pastas quado necessário.
-- Lidar com arquivos duplicados no Google Drive ou no sistema quando fazendo download/upload de arquivos.
+- Facilitar o processo de upload/download, comprimindo/extraindo pastas quando necessário.
+- Lidar com arquivos duplicados no Google Drive ou no sistema durante o processo de download/upload.
 
 ### CLID não consegue: <!-- omit in toc -->
 - Baixar múltiplos arquivos/pastas de uma só vez.
-- Interagir com o Google Drive em qualquer outra maneira que não seja uma das formas citadas acimas. Isso inclui mover arquivos para outros lugares no Google Drive, compartilhar arquivos/pastas com outros, mudar as configurações de visibilidade de um arquivo, ou qualquer outra ação do Google Drive. 
+- Interagir com o Google Drive de qualquer outra maneira que não seja uma das formas citadas acimas. Isso inclui mover arquivos para outros lugares no Google Drive, compartilhar arquivos/pastas com outros, mudar as configurações de visibilidade de um arquivo, ou qualquer outra ação do Google Drive. 
 - Baixar arquivos/pastas que não estejam na pasta root do Google Drive (Também conhecida como pasta/página principal), com a exceção de arquivos/pastas compartilhadas com o usuário. Você pode, no entanto, baixar uma pasta no diretório raiz, junto com todos os seus arquivos e subpastas (não importanto o quão fundo a pasta seja).
 - Fazer café :( . Ainda...
 <br><br>
