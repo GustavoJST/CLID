@@ -1,6 +1,5 @@
 <img src="banner.gif" width="100%"/>
 
-<br />
 <div align="center">
     <h3 align="center">CLID</h3>
 
@@ -21,7 +20,6 @@ Read the [documentation](docs/guide.md/#table-of-contents) for information on ho
 - [About the project](#about-the-project)
 - [Limitations](#limitations)
 </details>
-<br>
 
 # About the project
 CLID (short for CLI Drive) is a simple program whose main purpose is to download/upload files and folders, as well as calculating the size of folders, from Google Drive, using only the terminal. 

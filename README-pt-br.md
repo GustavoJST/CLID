@@ -1,6 +1,5 @@
 <img src="banner.gif" width="100%"/>
 
-<br />
 <div align="center">
     <h3 align="center">CLID</h3>
 
@@ -19,8 +18,6 @@ Leia a [documentação](docs/guide-pt-BR.md/#sumário) para obter informações 
 - [Sobre o projeto](#sobre-o-projeto)
 - [Limitações](#limitações)
 </details>
-<br>
-
 
 # Sobre o projeto
 CLID (abreviação para CLI Drive) é um simples programa cujo o principal objetivo é fazer o download/upload de arquivos e pastas, além de calcular o tamanho de pastas do Google Drive, usando apenas o terminal.
@@ -55,4 +52,3 @@ A seguir, uma lista do que o CLID consegue e não consegue fazer:
 - Devido ao tamanho de 100MB do chunk (descrito acima), as barras de progresso irão atualizar apenas 100MB por vez, o que pode demorar um pouco dependendo do quão rapido é a sua internet. Se você alterar o tamanho do chunk, a barra de progresso irá mudar de acordo, porém a sua velocidade de download **irá** diminuir.
 - Apenas um arquivo/pasta pode ser baixado por vez.
 - CLID pode apenas baixar arquivos que foram compartilhados com o usuário ou que estão no diretório root do Google Drive (pasta/página principal do drive). Isso significa que se você quiser baixar um arquivo ou pasta que esta dentro de outra pasta, você terá que baixar toda a pasta que está no diretório root, ou baixar o arquivo/pasta por fora do CLID. 
-
