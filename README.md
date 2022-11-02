@@ -1,4 +1,4 @@
-<img src="banner.gif" width="100%"/>
+<img src="/assets/banner.gif" width="100%"/>
 
 <div align="center">
     <h3 align="center">CLID</h3>

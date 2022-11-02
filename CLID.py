@@ -73,7 +73,7 @@ def main():
         DownloadSystem.total_skipped = 0
         DownloadSystem.skipped_files = []
         
-        with open("ascii-logo.txt", "r") as logo:
+        with open("./assets/ascii-logo.txt", "r") as logo:
             for line in logo:
                 print(line.rstrip())
 
