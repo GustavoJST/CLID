@@ -333,7 +333,7 @@ def main():
                 if joined_suffix in [".zip", ".tar.gz", ".tgz", ".tar"]:
                     while True:
                         print("\n" + Fore.YELLOW + "WARNING" + Style.RESET_ALL +
-                            ": Looks like the file you downloaded a compressed file. "
+                            ": Looks like you downloaded a compressed file. "
                             "Do you want to extract it to where it was downloaded? (Y/N)")
                         choice = input("=> ").strip().upper()
                         if choice == "N" or choice == "Y":
