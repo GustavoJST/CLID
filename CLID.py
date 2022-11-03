@@ -202,7 +202,7 @@ def main():
                         from_json_download = True
                     else:
                         print("\nSpecify the directory (ABSOLUTE PATH) where the file will be downloaded")
-                        print("or press enter to choose the default download directory ([CLID_folder]/downloads)")
+                        print("or press ENTER to choose the default download directory ([CLID_folder]/downloads)")
                         download_dir = Path(input(r"=> ").strip("\u202a").strip())
 
                     if download_dir == (WindowsPath(".") if os.name == 'nt' else PosixPath(".")):
@@ -237,7 +237,7 @@ def main():
                                     exit()
                             except UnboundLocalError:
                                 pass
-                            print("Specify an ABSOLUTE path to a directory or press Enter.")
+                            print("Specify an ABSOLUTE path to a directory or press ENTER.")
                             continue
                         else:
                             break
