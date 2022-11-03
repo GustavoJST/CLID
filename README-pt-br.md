@@ -3,7 +3,7 @@
 <div align="center">
     <h3 align="center">CLID</h3>
 
-Um programa simples, baseado em Python, para fazer download/upload de arquivos e pastas do Google Drive diretamente do terminal.
+Um programa simples, baseado em Python, para fazer download/upload de arquivos e pastas do Google Drive diretamente do terminal. Compatível com Windows/Linux.
 
 Leia a [documentação](docs/guide-pt-BR.md/#sumário) para obter informações sobre como instalar e usar o CLID.
    

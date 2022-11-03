@@ -3,7 +3,7 @@
 <div align="center">
     <h3 align="center">CLID</h3>
 
-A simple, Python based program for downloading/uploading Google Drive files and folders directly from the terminal.
+A simple, Python based program for downloading/uploading Google Drive files and folders directly from the terminal. Windows/Linux compatible.
 
 For the Portuguese (pt-BR) version of this README, [click here](README-pt-br.md).
 
