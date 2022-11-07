@@ -58,14 +58,14 @@ To use CLID, you need to create a Google Cloud project. Follow the step-by-step 
 10. You can then run CLID in the terminal using `./CLID.py`. <br><br> 
  
 ## First Run
-The first time you run CLID, a authentication flow will start, and the browser will open. At last, choose the account in which you want to access its Google Drive with CLID (and remember, only accounts that are **Test Users** will work. Refer to step 6 of [Google Cloud project setup](#google-cloud-project-setup) for more information).<br>
+The first time you run CLID, a authentication flow will start, and the browser will open. After that, choose the account in which you want to access its Google Drive with CLID (and remember, only accounts that are **Test Users** will work. Refer to step 6 of [Google Cloud project setup](#google-cloud-project-setup) for more information).<br>
 
 After that, a `token.json` file will be generated from `credentials.json`. If you want to switch accounts, simply delete `token.json`, run CLID and choose another (test user) account in the authentication flow. <br> <br> 
 
 ## Moving the CLID folder
 Be careful when moving the CLID folder around your system after you've created `CLID_env`. virtualenv created folders will break when being moved, making CLID stop working. <br>
 
-If you need to move the CLID folder another place in your system, delete `CLID_env`, move the CLID folder and redo the virtual environment creation steps, [mentioned above](#windows-installation), for your operating system.
+If you need to move the CLID folder to another place in your system, delete `CLID_env`, move the CLID folder and redo the virtual environment creation steps, [mentioned above](#windows-installation), for your operating system.
 <br><br>    
 
 # User guide
@@ -110,24 +110,24 @@ Uploading a file with CLID is also very simple:
 1. From the menu, type `C` to enter the upload mode.
 2. Specify the **absolute path** of the file you want to upload.
    
-After the two steps mentioned above, the upload process will begin. If the file is a directory (folder), CLID will automaticaly compress the directory before uploading to Google Drive (you can use a 3rd party app inside Google Drive to unzip the file if you want). <br>
+After the two steps mentioned above, the upload process will begin. If the file is a directory (folder), CLID will automatically compress the directory before uploading to Google Drive (you can use a 3rd party app inside Google Drive to unzip the file if you want). <br>
 
 CLID also checks if the file is already present in your Drive, and if it is, it gives you the option to replace the file or to keep both files, renaming the file you're uploading to something like `file(1).zip`. <br><br>
 
 ## Calculating folder size
 CLID can also calculate the folder size of a Drive folder. It does that by iterating over all files present in the folder, getting their size and adding to a total. At the end of the operation, you'll get a summary with information about the folder's name, size, total number of files, folders, Google Workspace files and unsupported files.<br>
 
-This process can take a while for folder with a lot of subfolders inside. The more **subfolders** a folder has, the longer it will take to calculate its size.
+This process can take a while for folders with a lot of subfolders inside. The more **subfolders** a folder has, the longer it will take to calculate its size.
 
 
-**Important**: Do note that this number is and approximation, as depenending of the contents of the folder, the final size may be different when downloaded in your local system. This happens when dealing with Google Workspace files, mainly because of file size differences, depending of which format the file was exported to (some export format are lighter/heavier than others).
+**Important**: Do note that this number is an approximation, as depending of the contents of the folder, the final size may be different after downloading to your local system. This happens when dealing with Google Workspace files, mainly because of file size differences, depending of which format the file was exported to (some export format are lighter/heavier than others).
 <br><br>
 
 ## Settings and preferences
-CLID has a  `settings.json` file that lets the user change how CLID behaves.  **For any change you made in `settings.json` to take effect, you'll need to restart CLID**. Here's a rundown of what each setting do: <br><br>
+CLID has a  `settings.json` file that lets the user change how CLID behaves.  **For any change you made in `settings.json` to take effect, you'll need to restart CLID**. Here's a rundown of what each setting does: <br><br>
 
 ### download_directory (string | null) <!-- omit in toc -->
-Allows the user to specify a download directory for all the files/folders downloaded with CLID. If `"download_directory": null`, CLID will ask for a download directory every time you want to download a file.
+Allows the user to specify a download directory for all the files/folders downloaded with CLID. If `"download_directory": null`, CLID will ask for a download directory every time you download a file.
 
 Example:
 `"download_directory": "C:\\Users\\Gustavo\\Downloads"` <br>
