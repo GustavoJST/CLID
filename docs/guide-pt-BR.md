@@ -34,26 +34,28 @@ Para usar o CLID, é necessário que você faça um projeto no Google Cloud. Sig
 <br> <br>
 
 ## Instalação no Windows
-1. Clone/faça download do repositório.
-2. Instale o virtualenv usando `pip install virtualenv`.
-3. Navegue até a pasta do projeto usando `cd path/to/[CLID_folder]`.
-4. Crie um novo ambiente virtual na pasta do projeto, chamado `CLID_env`, usando `virtualenv CLID_env`.
-5. Ative o ambiente virtual navegando até a pasta `Scripts` usando `cd CLID_env/Scripts`. Após isso, digite `activate`. 
-6. Depois de ativar o ambiente virtual, instale as dependencias necessárias usando `pip install -r requirements.txt`. 
-7. Abra `CLID.py` no editor de código, copie o shebang para Windows e cole-o na primeira linha do código.
-8. Agora você pode iniciar o CLID no terminal usando apenas `CLID.py` ou clicando diretamente no arquivo/atalho do `CLID.py`.
+1. Certifique-se de ter a **versão 3.10** (ou superior) do Python.
+2. Clone/faça download do repositório.
+3. Instale o virtualenv usando `pip install virtualenv`.
+4. Navegue até a pasta do projeto usando `cd path/to/[CLID_folder]`.
+5. Crie um novo ambiente virtual na pasta do projeto, chamado `CLID_env`, usando `virtualenv CLID_env`.
+6. Ative o ambiente virtual navegando até a pasta `Scripts` usando `cd CLID_env/Scripts`. Após isso, digite `activate`. 
+7. Depois de ativar o ambiente virtual, instale as dependencias necessárias usando `pip install -r requirements.txt`. 
+8. Abra `CLID.py` no editor de código, copie o shebang para Windows e cole-o na primeira linha do código.
+9.  Agora você pode iniciar o CLID no terminal usando apenas `CLID.py` ou clicando diretamente no arquivo/atalho do `CLID.py`.
 <br><br>
 
 ## Instalação no Linux
-1. Clone/faça download do repositório.
-2. Instale o virtualenv usando `pip install virtualenv`.
-3. Navegue até a pasta do projeto usando `cd path/to/[CLID_folder]`.
-4. Crie um novo ambiente virtual na pasta do projeto, chamado `CLID_env`, usando `virtualenv CLID_env`.
-5. Ative o ambiente virtual usando `source CLID_env/bin/activate`.
-6. Depois de ativar o ambiente virtual, instale as dependencias necessárias usando `pip install -r requirements.txt`. 
-7. Abra `CLID.py` no editor de código, copie o shebang para Linux e cole-o na primeira linha do código.
-8. Torne `CLID.py` um executável usando `chmod u+x CLID.py`.
-9. Agora você pode iniciar o CLID no terminal usando `./CLID.py`. <br><br> 
+1. Certifique-se de ter a **versão 3.10** (ou superior) do Python.
+2. Clone/faça download do repositório.
+3. Instale o virtualenv usando `pip install virtualenv`.
+4. Navegue até a pasta do projeto usando `cd path/to/[CLID_folder]`.
+5. Crie um novo ambiente virtual na pasta do projeto, chamado `CLID_env`, usando `virtualenv CLID_env`.
+6. Ative o ambiente virtual usando `source CLID_env/bin/activate`.
+7. Depois de ativar o ambiente virtual, instale as dependencias necessárias usando `pip install -r requirements.txt`. 
+8. Abra `CLID.py` no editor de código, copie o shebang para Linux e cole-o na primeira linha do código.
+9.  Torne `CLID.py` um executável usando `chmod u+x CLID.py`.
+10. Agora você pode iniciar o CLID no terminal usando `./CLID.py`. <br><br> 
  
 ## Primeira execução
 Na primeira vez que você executar o CLID, um processo de autenticação (Flow), será iniciado, e o navegador será aberto. Por fim, escolha a conta na qual você deseja acessar o Google Drive com o CLID (e lembre-se, apenas contas que são **Usuários de Teste** irão funcionar. Leia novamente o passo 6 do [Setup do projeto no Google Cloud](#setup-do-projeto-no-google-cloud) para mais informações). 
