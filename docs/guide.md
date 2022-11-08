@@ -102,7 +102,7 @@ In conclusion, trying to download a unsupported file will **cancel** the downloa
 | Google Forms                  | :x: Not supported :x:           | :x: Not supported :x: |
 | Google My Maps                | :x: Not supported :x:           | :x: Not supported :x: |
 
-<hr>
+<br>
 
 ## Uploading
 
